@@ -1,0 +1,13 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "DADPerfectChannelClient";
+
+service PerfectChannelService {
+  rpc Test(PerfectChannelRequest) returns (PerfectChannelReply);
+}
+message PerfectChannelRequest {
+  string message = 1;
+}
+message PerfectChannelReply {
+	bool status = 1;
+}
