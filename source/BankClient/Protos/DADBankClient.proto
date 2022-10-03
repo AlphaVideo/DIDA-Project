@@ -1,0 +1,13 @@
+﻿syntax = "proto3";
+
+/* option csharp_namespace = "DADBankClientClient"; */
+
+service BankClientService {
+	rpc Test(BankClientRequest) returns (BankClientReply);
+}
+message BankClientRequest {
+	string message = 1;
+}
+message BankClientReply {
+	bool status = 1;
+}
