@@ -1,11 +1,30 @@
 ﻿syntax = "proto3";
 
-service BankClientService {
-	rpc Test(BankClientRequest) returns (BankClientReply);
+
+message DepositRequest {
+	int32 amount = 1;
 }
-message BankClientRequest {
-	string message = 1;
-}
-message BankClientReply {
+message DepositReply {
 	bool status = 1;
+}
+
+
+message WithrawalRequest {
+	int32 amount = 1;
+}
+message WithrawalReply {
+	bool status = 1;
+}
+
+message ReadBalanceRequest {
+}
+message ReadBalanceReply {
+	bool status = 1;
+}
+
+
+service BankService {
+	rpc ReadBalance(ReadBalanceRequest) returns (ReadBalanceReply);
+	rpc Withrawal(WithrawalRequest) returns (WithrawalReply);
+	rpc Deposit(DepositRequest) returns (DepositReply);
 }

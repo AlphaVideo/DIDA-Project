@@ -1,4 +1,6 @@
-﻿using Grpc.Core;
+﻿using BankServer.BankDomain;
+using BankServer.Services;
+using Grpc.Core;
 using Grpc.Core.Interceptors;
 using System;
 using System.Collections.Generic;
@@ -8,46 +10,22 @@ using System.Threading.Tasks;
 /*TODO: Decide if we're going to use interceptors
  * Also clean up code and adapt it for our project */
 
-public class DADBankClientService : BankClientService.BankClientServiceBase
-{
-    private Dictionary<string, string> clientMap = new Dictionary<string, string>();
-
-    public DADBankClientService() {}
-
-    public override Task<BankClientReply> Test(
-       BankClientRequest request, ServerCallContext context)
-    {
-        return Task.FromResult(Reg(request));
-    }
-
-    public BankClientReply Reg(BankClientRequest request)
-    {
-
-        lock (this)
-        {
-            Console.WriteLine($"Received request with message: {request.Message}");
-        }
-        return new BankClientReply
-        {
-            Status = true
-        };
-    }
-}
-
-internal class BankServer
+internal class BankServerApp
 {
     private static void Main(string[] args)
     {
         const int ServerPort = 1001;
         const string ServerHostname = "localhost";
+        BankStore store = new BankStore();
 
         Server server = new Server
         {
-            Services = { BankClientService.BindService(new DADBankClientService()).Intercept(new ServerInterceptor()) },
+            Services = { BankService.BindService(new BankServiceImpl(store)).Intercept(new ServerInterceptor()) },
             Ports = { new ServerPort(ServerHostname, ServerPort, ServerCredentials.Insecure) }
         };
         server.Start();
-        Console.WriteLine("ChatServer server listening on port " + ServerPort);
+
+        Console.WriteLine("Bank server listening on port " + ServerPort);
         Console.WriteLine("Press any key to stop the server...");
         Console.ReadKey();
 
