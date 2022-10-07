@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-internal class BankClient
+internal class Customer
 {
     /// <summary>
     ///  The main entry point for the application.
@@ -23,10 +23,10 @@ internal class BankClient
         var clientInterceptor = new ClientInterceptor();
         GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
         CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
-        var client = new BankClientService.BankClientServiceClient(interceptingInvoker);
-        BankClientRequest registerRequest = new BankClientRequest { Message = "test" };
-        BankClientReply reply = client.Test(registerRequest);
-        Console.WriteLine("reply: " + reply.Status);
+        var client = new BankService.BankServiceClient(interceptingInvoker);
+        //BankClientRequest registerRequest = new BankClientRequest { Message = "test" };
+        //BankClientReply reply = client.Test(registerRequest);
+        //Console.WriteLine("reply: " + reply.Status);
         Console.ReadKey();
     }
 

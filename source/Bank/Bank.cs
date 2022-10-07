@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 /*TODO: Decide if we're going to use interceptors
  * Also clean up code and adapt it for our project */
 
-internal class BankServerApp
+internal class BankApp
 {
     private static void Main(string[] args)
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Grpc.Core;
-using BankServer.BankDomain
+using BankServer.BankDomain;
 
 namespace BankServer.Services
 {
