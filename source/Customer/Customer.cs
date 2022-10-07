@@ -1,9 +1,11 @@
 ﻿/* using DADBankClientClient; */
+using Common;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,17 +18,24 @@ internal class Customer
     [STAThread]
     static void Main()
     {
-        const int ServerPort = 1001;
-        const string ServerHostname = "localhost";
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
-        var clientInterceptor = new ClientInterceptor();
-        GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
-        CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
-        var client = new BankService.BankServiceClient(interceptingInvoker);
-        //BankClientRequest registerRequest = new BankClientRequest { Message = "test" };
-        //BankClientReply reply = client.Test(registerRequest);
-        //Console.WriteLine("reply: " + reply.Status);
+        List<ServerInfo> bankServers = new();
+        bankServers.Add(new ServerInfo("localhost", 1001));
+
+        var request = new ReadBalanceRequest();
+        foreach (ServerInfo server in bankServers)
+        {
+            var client = new BankService.BankServiceClient(server.GetChannel());
+            var reply = client.ReadBalance(request);
+            Console.WriteLine("reply: " + reply.Status);
+        }
+
+        //var clientInterceptor = new ClientInterceptor();
+        //GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
+        //CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
+        //var client = new BankService.BankServiceClient(interceptingInvoker);
+
         Console.ReadKey();
     }
 
@@ -42,7 +51,7 @@ internal class Customer
         {
 
             Metadata metadata = context.Options.Headers; // read original headers
-            if (metadata == null) { metadata = new Metadata(); }
+            metadata ??= new Metadata();
             metadata.Add("dad", "dad-value"); // add the additional metadata
 
             // create new context because original context is readonly
