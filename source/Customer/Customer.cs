@@ -28,7 +28,7 @@ internal class Customer
         {
             var client = new BankService.BankServiceClient(server.GetChannel());
             var reply = client.ReadBalance(request);
-            Console.WriteLine("reply: " + reply.Status);
+            Console.WriteLine("reply: " + reply.Balance);
         }
 
         //var clientInterceptor = new ClientInterceptor();

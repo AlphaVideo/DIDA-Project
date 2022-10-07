@@ -18,19 +18,21 @@ namespace BankServer.Services
             this.store = store;
         }
 
-        public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
-        {
-            return Task.FromResult(request);
-        }
+        //public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
+        //{
+        //    return Task.FromResult(request);
+        //}
 
-        public override Task<WithrawalReply> Withrawal(WithrawalRequest request, ServerCallContext context)
-        {
-            return Task.FromResult(request);
-        }
+        //public override Task<WithrawalReply> Withrawal(WithrawalRequest request, ServerCallContext context)
+        //{
+        //    return Task.FromResult(request);
+        //}
 
         public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
         {
-            return Task.FromResult(request);
+            var reply = new ReadBalanceReply();
+            reply.Balance = 0;
+            return Task.FromResult(reply);
         }
 
     }
