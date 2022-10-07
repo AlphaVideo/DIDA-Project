@@ -11,27 +11,30 @@ namespace BankServer.Services
     internal class BankServiceImpl : BankService.BankServiceBase
     {
 
-        private BankStore store;
+        private BankStore _store;
 
         public BankServiceImpl(BankStore store) 
         { 
-            this.store = store;
+            _store = store;
+        }
+        public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
+        {
+            var reply = new DepositReply();
+            reply.Status = _store.Deposit(request.Amount);
+            return Task.FromResult(reply);
         }
 
-        //public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
-        //{
-        //    return Task.FromResult(request);
-        //}
-
-        //public override Task<WithrawalReply> Withrawal(WithrawalRequest request, ServerCallContext context)
-        //{
-        //    return Task.FromResult(request);
-        //}
+        public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
+        {
+            var reply = new WithdrawalReply();
+            reply.Status = _store.Withdrawal(request.Amount);
+            return Task.FromResult(reply);
+        }
 
         public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
         {
             var reply = new ReadBalanceReply();
-            reply.Balance = 0;
+            reply.Balance = _store.ReadBalance();
             return Task.FromResult(reply);
         }
 

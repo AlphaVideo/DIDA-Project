@@ -9,35 +9,30 @@ namespace BankServer.BankDomain
     internal class BankStore
     {
 
-        private Dictionary<int, int> balances;
+        private int _balance; //only one client supported
 
         public BankStore()
         {
-            balances = new Dictionary<int, int>();
+            _balance = 0;
         }
 
-        public bool Deposit(int client_id, int amount) 
+        public bool Deposit(int amount) 
         {
-            if (!balances.ContainsKey(client_id)) return false;
-
-            balances[client_id] += amount;
+            _balance += amount;
             return true;
         }
 
-        public bool Withrawal(int client_id, int amount)
+        public bool Withdrawal(int amount)
         {
-            if (!balances.ContainsKey(client_id) || balances[client_id] < amount) 
+            if (_balance < amount) 
                 return false;
 
-            balances[client_id] -= amount;
+            _balance -= amount;
             return true;
         }
-        public int ReadBalance(int client_id)
+        public int ReadBalance()
         {
-            if (!balances.ContainsKey(client_id))
-                return -1;
-
-            return balances[client_id];
+            return _balance;
         }
 
 
