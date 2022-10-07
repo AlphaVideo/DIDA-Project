@@ -16,19 +16,28 @@ internal class BankApp
     {
         const int ServerPort = 1001;
         const string ServerHostname = "localhost";
-        BankStore store = new BankStore();
+        BankStore store = new();
+        BankServiceImpl service = new BankServiceImpl(store);
 
         Server server = new Server
         {
-            Services = { BankService.BindService(new BankServiceImpl(store)).Intercept(new ServerInterceptor()) },
+            Services = { BankService.BindService(service).Intercept(new ServerInterceptor()) },
             Ports = { new ServerPort(ServerHostname, ServerPort, ServerCredentials.Insecure) }
         };
         server.Start();
 
         Console.WriteLine("Bank server listening on port " + ServerPort);
-        Console.WriteLine("Press any key to stop the server...");
-        Console.ReadKey();
+        Console.WriteLine("Press T to toggle freeze state. Press enter to exit.");
+        var key = Console.ReadKey().Key;
 
+        while (key != ConsoleKey.Enter)
+        {
+            if (key == ConsoleKey.T)
+                Console.WriteLine("Running state set to " + service.ToggleIsRunning());
+            key = Console.ReadKey().Key;
+        }
+
+        Console.WriteLine("Server will now shutdown.");
         server.ShutdownAsync().Wait();
     }
 }

@@ -7,10 +7,7 @@ message DepositRequest {
 	int32 amount = 3;
 }
 message DepositReply {
-	int32 bank_id = 1;
-	int32 msg_id = 2;
-	bool is_down = 3;
-	bool status = 4;
+	bool status = 1; // true if not frozen, and will try to execute
 }
 
 
@@ -20,10 +17,7 @@ message WithdrawalRequest {
 	int32 amount = 3;
 }
 message WithdrawalReply {
-	int32 bank_id = 1;
-	int32 msg_id = 2;
-	bool is_down = 3;
-	bool status = 4;
+	bool status = 1; // true if not frozen, and will try to execute
 }
 
 message ReadBalanceRequest {
@@ -31,10 +25,8 @@ message ReadBalanceRequest {
 	int32 request_id = 2;
 }
 message ReadBalanceReply {
-	int32 bank_id = 1;
-	int32 msg_id = 2;
-	bool is_down = 3;
-	int32 balance = 4;
+	bool status = 1; // true if not frozen; discard value otherwise
+	int32 balance = 2;
 }
 
 

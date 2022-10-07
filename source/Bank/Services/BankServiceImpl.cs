@@ -12,29 +12,49 @@ namespace BankServer.Services
     {
 
         private BankStore _store;
+        private bool _isRunning;
 
         public BankServiceImpl(BankStore store) 
         { 
             _store = store;
+            _isRunning = true;
+        }
+
+        public bool ToggleIsRunning()
+        {
+            _isRunning = ! _isRunning;
+            return _isRunning;
         }
         public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
         {
             var reply = new DepositReply();
-            reply.Status = _store.Deposit(request.Amount);
+            reply.Status = _isRunning;
+
+            if (_isRunning) // create and add request to queue
+                ;
+
             return Task.FromResult(reply);
         }
 
         public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
         {
             var reply = new WithdrawalReply();
-            reply.Status = _store.Withdrawal(request.Amount);
+            reply.Status = _isRunning;
+
+            if (_isRunning) // create and add request to queue
+                ;
+
             return Task.FromResult(reply);
         }
 
         public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
         {
             var reply = new ReadBalanceReply();
-            reply.Balance = _store.ReadBalance();
+            reply.Status = _isRunning;
+
+            // send balance only if it's running, else send zero
+            reply.Balance = _isRunning ? _store.ReadBalance() : 0;
+
             return Task.FromResult(reply);
         }
 

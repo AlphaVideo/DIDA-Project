@@ -8,7 +8,6 @@ namespace BankServer.BankDomain
 {
     internal class BankStore
     {
-
         private int _balance; //only one client supported
 
         public BankStore()
@@ -34,8 +33,5 @@ namespace BankServer.BankDomain
         {
             return _balance;
         }
-
-
-
     }
 }
