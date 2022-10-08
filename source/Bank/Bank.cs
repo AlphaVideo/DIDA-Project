@@ -14,7 +14,30 @@ internal class BankApp
 {
     private static void Main(string[] args)
     {
-        const int ServerPort = 1001;
+        int serverId = 0;
+        int ServerPort = 0;
+        try
+        {
+            Console.WriteLine("Input ID number:");
+            var idString = Console.ReadLine();
+            serverId = Int32.Parse(idString);
+        } catch (System.FormatException)
+        {
+            Console.WriteLine("ID must be a valid integer.");
+            Environment.Exit(-1);
+        }
+
+        try
+        {
+            Console.WriteLine("Input port number:");
+            var portString = Console.ReadLine();
+            ServerPort = Int32.Parse(portString);
+        } catch (System.FormatException)
+        {
+            Console.WriteLine("Port must be a valid integer.");
+            Environment.Exit(-1);
+        }
+        
         const string ServerHostname = "localhost";
         BankStore store = new();
         BankServiceImpl service = new BankServiceImpl(store);

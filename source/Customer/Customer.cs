@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,15 +21,114 @@ internal class Customer
     {
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
+        int clientId = 0;
+        try
+        {
+            Console.WriteLine("Input ID number:");
+            var idString = Console.ReadLine();
+            clientId = Int32.Parse(idString);
+        }
+        catch (System.FormatException)
+        {
+            Console.WriteLine("ID must be a valid integer.");
+            Environment.Exit(-1);
+        }
+
+        //TODO - Read from config file and add corresponding bank servers
         List<ServerInfo> bankServers = new();
         bankServers.Add(new ServerInfo("localhost", 1001));
+        bankServers.Add(new ServerInfo("localhost", 1002));
+        bankServers.Add(new ServerInfo("localhost", 1003));
 
-        var request = new ReadBalanceRequest();
-        foreach (ServerInfo server in bankServers)
+        bool running = true;
+        while(running)
         {
-            var client = new BankService.BankServiceClient(server.GetChannel());
-            var reply = client.ReadBalance(request);
-            Console.WriteLine("reply: " + reply.Balance);
+            Console.Write("> ");
+            var command = Console.ReadLine();
+            if(command != null)
+            {
+                string[] tokens = command.Split(' ');
+
+                switch (tokens[0])
+                {
+                    //D amount - deposit
+                    case "d":
+                    case "D":
+                    {
+                        var request = new DepositRequest();
+
+                        foreach (ServerInfo server in bankServers)
+                        {
+                            try
+                            {
+                                var client = new BankService.BankServiceClient(server.GetChannel());
+                                var reply = client.Deposit(request);
+                                Console.WriteLine("reply: " + reply.Status);
+                            }
+                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
+                            {
+                                Console.WriteLine("Server " + server + " could not be contacted.");
+                            }
+                        }
+                        break;
+                    }
+
+                    //W amount - withdrawal
+                    case "w":
+                    case "W":
+                    {
+                        var request = new WithdrawalRequest();
+
+                        foreach (ServerInfo server in bankServers)
+                        {
+                            try
+                            {
+                                var client = new BankService.BankServiceClient(server.GetChannel());
+                                var reply = client.Withdrawal(request);
+                                Console.WriteLine("reply: " + reply.Status);
+                            }
+                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
+                            {
+                                Console.WriteLine("Server " + server + " could not be contacted.");
+                            }
+                        }
+                        break;
+                    }
+
+                    //R - read
+                    case "r":
+                    case "R":
+                    {
+                        var request = new ReadBalanceRequest();
+
+                        foreach (ServerInfo server in bankServers)
+                        {
+                            try
+                            {
+                                var client = new BankService.BankServiceClient(server.GetChannel());
+                                var reply = client.ReadBalance(request);
+                                Console.WriteLine("reply: " + reply.Balance);
+                            }
+                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
+                            {
+                                Console.WriteLine("Server " + server + " could not be contacted.");
+                            }
+                        }
+                        break;
+                    }
+
+                    //E - exit
+                    case "e":
+                    case "E":
+                        running = false;
+                        Console.WriteLine("App is now closing. Press enter to continue.");
+                        break;
+
+                    default:
+                        Console.WriteLine("Could not recognize command. (exit with E)");
+                        break;
+                }
+            }
         }
 
         //var clientInterceptor = new ClientInterceptor();
