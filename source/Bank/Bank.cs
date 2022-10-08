@@ -1,5 +1,6 @@
 ﻿using BankServer.BankDomain;
 using BankServer.Services;
+using Common;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using System;
@@ -37,6 +38,9 @@ internal class BankApp
             Console.WriteLine("Port must be a valid integer.");
             Environment.Exit(-1);
         }
+
+        //Hardcoded timeslots, duration 50 ms for 10 slots
+        Timeslots timeslots = new Timeslots(50, 10);
         
         const string ServerHostname = "localhost";
         BankStore store = new();

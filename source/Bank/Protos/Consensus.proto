@@ -1,4 +1,15 @@
 ﻿syntax = "proto3";
 
-service ConsensusService {
+message CompareSwapRequest {
+	int32 slot = 1;
+	int32 invalue = 2;
 }
+message CompareSwapReply {
+	bool status = 1; // true if not frozen; discard value otherwise
+	int32 outvalue = 2;
+}
+
+service ConsensusService {
+	rpc CompareAndSwap(CompareSwapRequest) returns (CompareSwapReply);
+}
+
