@@ -1,4 +1,37 @@
 ﻿syntax = "proto3";
 
 service PaxosService {
+	rpc PhaseOne(Prepare) returns (Promise);
+	rpc PhaseTwo(Accept) returns (EmptyReply);
+	rpc Commit(CommitRequest) returns (EmptyReply);
+}
+
+message Prepare {
+	int32 n = 1;
+}
+
+message Promise {
+
+	enum PROMISE_STATUS{
+		NACK = 0;
+		FIRST = 1;
+		SWAPPING = 2;
+	}
+
+	PROMISE_STATUS status = 1;
+	int32 m = 2;
+	int32 prev_proposed_value = 3;
+}
+
+message Accept {
+	int32 n = 1;
+	int32 proposed_value = 2;
+}
+
+
+message Commit {
+	int32 accepted_value = 1;
+}
+
+message EmptyReply {
 }

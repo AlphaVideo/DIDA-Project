@@ -19,17 +19,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <Protobuf Include="..\Bank\Protos\Boney.proto">
+      <Link>Protos\Boney.proto</Link>
+    </Protobuf>
     <Protobuf Include="Protos\Paxos.proto" GrpcServices="Both" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Protobuf Include="..\Bank\Protos\Consensus.proto">
-      <Link>Protos\Consensus.proto</Link>
-    </Protobuf>
   </ItemGroup>
 
 

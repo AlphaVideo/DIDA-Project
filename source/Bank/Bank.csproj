@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Protos\Consensus.proto" />
+    <None Remove="Protos\Boney.proto" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,7 +20,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <ProjectReference Include="..\Common\Common.csproj" />
-    <Protobuf Include="Protos\Consensus.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos\Boney.proto" GrpcServices="Client" />
     <Protobuf Include="Protos\BankCustomer.proto" GrpcServices="Server" />
   </ItemGroup>
 
