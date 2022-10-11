@@ -53,7 +53,7 @@ namespace Common
             _slotDuration = duration;
             _maxSlots = slots;
 
-            for(int i = 1; i < _maxSlots; i++)
+            for(int i = 1; i <= _maxSlots; i++)
             {
                 _slots.Add(i, new Slot(i));
             }
@@ -87,6 +87,11 @@ namespace Common
         public int getSlotDuration()
         {
             return _slotDuration;
+        }
+
+        public int getMaxSlots()
+        {
+            return _maxSlots;
         }
       
     }

@@ -40,9 +40,16 @@ internal class BankApp
             Environment.Exit(-1);
         }
 
+        //TODO - Read from config file
         //Hardcoded timeslots, duration 50 ms for 10 slots
         Timeslots timeslots = new Timeslots(50, 10);
-        
+
+        //TODO - Read from config file and add corresponding boney servers
+        List<ServerInfo> boneyServers = new();
+        boneyServers.Add(new ServerInfo("localhost", 2001));
+        boneyServers.Add(new ServerInfo("localhost", 2002));
+        boneyServers.Add(new ServerInfo("localhost", 2003));
+
         const string ServerHostname = "localhost";
         BankStore store = new();
         BankServiceImpl service = new BankServiceImpl(store);
@@ -55,15 +62,42 @@ internal class BankApp
         server.Start();
 
         Console.WriteLine("Bank server listening on port " + ServerPort);
-        Console.WriteLine("Press T to toggle freeze state. Press enter to exit.");
-        var key = Console.ReadKey().Key;
+        Console.WriteLine("Press enter to exit.");
 
-        while (key != ConsoleKey.Enter)
+        //Timeslots start with index 1!!
+        for(int i = 1; i < timeslots.getMaxSlots(); i++)
         {
-            if (key == ConsoleKey.T)
-                Console.WriteLine("Running state set to " + service.ToggleIsRunning());
-            key = Console.ReadKey().Key;
+            //Assuming bank servers are running as processes 1,2 and 3
+            //Asks for consensus on who's the leader with random bank server as invalue candidate
+            Random rnd = new Random();
+            int candidate = rnd.Next(1, 4);
+
+            foreach (ServerInfo boney in boneyServers)
+            {
+                try
+                {
+                    var request = new CompareSwapRequest { Slot = i, Invalue = candidate };
+                    var boneyClient = new BoneyService.BoneyServiceClient(boney.GetChannel());
+                    var reply = boneyClient.CompareAndSwap(request);
+                    Console.WriteLine("Consensus result: Server with ID " + reply.Outvalue + " is primary server");
+                }
+                catch (Grpc.Core.RpcException) // Server down (different from frozen)
+                {
+                    Console.WriteLine("Boney server " + server + " could not be contacted.");
+                }
+            }
         }
+
+
+        //Console.WriteLine("Press T to toggle freeze state. Press enter to exit.");
+        //var key = Console.ReadKey().Key;
+
+        //while (key != ConsoleKey.Enter)
+        //{
+        //    if (key == ConsoleKey.T)
+        //        Console.WriteLine("Running state set to " + service.ToggleIsRunning());
+        //    key = Console.ReadKey().Key;
+        //}
 
         Console.WriteLine("Server will now shutdown.");
         server.ShutdownAsync().Wait();
