@@ -5,19 +5,25 @@ namespace Common
 {
     public class ServerInfo
     {
-        GrpcChannel _channel;
-        string _address;
+        protected GrpcChannel _channel;
+        protected string _address;
 
         public ServerInfo(string hostname, int port)
         {
-            _channel = GrpcChannel.ForAddress("http://" + hostname + ":" + port);
             _address = "http://" + hostname + ":" + port;
+            _channel = GrpcChannel.ForAddress(_address);
+            
         }
 
-        public GrpcChannel GetChannel()
+        public ServerInfo(string url)
         {
-            return _channel;
+            _address = url;
+            _channel = GrpcChannel.ForAddress(url);
         }
+
+        public GrpcChannel Channel => _channel;
+
+        public string Address => _address;
 
         public override string ToString()
         {

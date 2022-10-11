@@ -12,7 +12,7 @@ internal class Program
     {
         if (args.Length != 1)
         {
-            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + args.Length + " instead.");
+            Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + args.Length + " instead.");
             Console.ReadKey();
             System.Environment.Exit(1);
         }
