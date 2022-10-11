@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Boney
 {
-    internal class BoneyServiceImpl : Boney
+    internal class BoneyServiceImpl : BoneyService.BoneyServiceBase
     {
 
     }

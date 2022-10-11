@@ -29,7 +29,7 @@ message Accept {
 }
 
 
-message Commit {
+message CommitRequest {
 	int32 accepted_value = 1;
 }
 
