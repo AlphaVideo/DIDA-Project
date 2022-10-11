@@ -77,13 +77,13 @@ internal class BankApp
                 try
                 {
                     var request = new CompareSwapRequest { Slot = i, Invalue = candidate };
-                    var boneyClient = new BoneyService.BoneyServiceClient(boney.GetChannel());
+                    var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
                     var reply = boneyClient.CompareAndSwap(request);
                     Console.WriteLine("Consensus result: Server with ID " + reply.Outvalue + " is primary server");
                 }
                 catch (Grpc.Core.RpcException) // Server down (different from frozen)
                 {
-                    Console.WriteLine("Boney server " + server + " could not be contacted.");
+                    Console.WriteLine("Boney server " + server + " could not be reached.");
                 }
             }
         }

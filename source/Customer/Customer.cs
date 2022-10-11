@@ -19,6 +19,9 @@ internal class Customer
     [STAThread]
     static void Main(string[] argv)
     {
+        int clientId;
+        List<BankServerInfo> bankServers;
+
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
         if (argv.Length != 1)
@@ -28,16 +31,11 @@ internal class Customer
             System.Environment.Exit(1);
         }
 
-        int clientId = int.Parse(argv[0]);
-
+        clientId = int.Parse(argv[0]);
         Console.WriteLine("CUSTOMER process started with id " + clientId);
 
+        bankServers = readConfig();      
 
-        //TODO - Read from config file and add corresponding bank servers
-        List<ServerInfo> bankServers = new();
-        bankServers.Add(new ServerInfo("localhost", 1001));
-        bankServers.Add(new ServerInfo("localhost", 1002));
-        bankServers.Add(new ServerInfo("localhost", 1003));
 
         bool running = true;
         while(running)
@@ -56,17 +54,16 @@ internal class Customer
                     {
                         var request = new DepositRequest();
 
-                        foreach (ServerInfo server in bankServers)
+                        foreach (BankServerInfo server in bankServers)
                         {
                             try
                             {
-                                var client = new BankService.BankServiceClient(server.GetChannel());
-                                var reply = client.Deposit(request);
-                                Console.WriteLine("reply: " + reply.Status);
+                                var reply = server.Client.Deposit(request);
+                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
                             }
                             catch (Grpc.Core.RpcException) // Server down (different from frozen)
                             {
-                                Console.WriteLine("Server " + server + " could not be contacted.");
+                                Console.WriteLine("Server " + server + " could not be reached.");
                             }
                         }
                         break;
@@ -78,17 +75,16 @@ internal class Customer
                     {
                         var request = new WithdrawalRequest();
 
-                        foreach (ServerInfo server in bankServers)
+                        foreach (BankServerInfo server in bankServers)
                         {
                             try
                             {
-                                var client = new BankService.BankServiceClient(server.GetChannel());
-                                var reply = client.Withdrawal(request);
-                                Console.WriteLine("reply: " + reply.Status);
+                                var reply = server.Client.Withdrawal(request);
+                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
                             }
                             catch (Grpc.Core.RpcException) // Server down (different from frozen)
                             {
-                                Console.WriteLine("Server " + server + " could not be contacted.");
+                                Console.WriteLine("Server " + server + " could not be reached.");
                             }
                         }
                         break;
@@ -100,17 +96,16 @@ internal class Customer
                     {
                         var request = new ReadBalanceRequest();
 
-                        foreach (ServerInfo server in bankServers)
+                        foreach (BankServerInfo server in bankServers)
                         {
                             try
                             {
-                                var client = new BankService.BankServiceClient(server.GetChannel());
-                                var reply = client.ReadBalance(request);
-                                Console.WriteLine("reply: " + reply.Balance);
+                                var reply = server.Client.ReadBalance(request);
+                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
                             }
                             catch (Grpc.Core.RpcException) // Server down (different from frozen)
                             {
-                                Console.WriteLine("Server " + server + " could not be contacted.");
+                                Console.WriteLine("Server " + server + " could not be reached.");
                             }
                         }
                         break;
@@ -136,6 +131,23 @@ internal class Customer
         //var client = new BankService.BankServiceClient(interceptingInvoker);
 
         Console.ReadKey();
+    }
+
+    public static List<BankServerInfo> readConfig()
+    {
+        string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
+        string config_path = Path.Combine(base_path, @"Common\config.txt");
+
+        List<BankServerInfo> servers = new();
+
+        string[] lines = File.ReadAllLines(config_path);
+        foreach (string line in lines)
+        {
+            string[] tokens = line.Split(" ");
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
+                servers.Add(new BankServerInfo(tokens[3]));
+        }
+        return servers;
     }
 
     public class ClientInterceptor : Interceptor
