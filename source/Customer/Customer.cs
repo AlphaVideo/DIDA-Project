@@ -26,7 +26,7 @@ internal class Customer
 
         if (argv.Length != 1)
         {
-            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + argv.Length + " instead.");
+            Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + argv.Length + " instead.");
             Console.ReadKey();
             System.Environment.Exit(1);
         }

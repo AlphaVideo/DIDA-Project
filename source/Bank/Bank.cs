@@ -13,55 +13,40 @@ using System.Threading.Tasks;
 
 internal class BankApp
 {
+    private static int processId;
+    private static int serverPort;
+    private static Timeslots? timeslots;
+    private static List<BoneyServerInfo> boneyServers = new();
     private static void Main(string[] args)
     {
         if (args.Length != 1)
         {
-            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + args.Length + " instead.");
+            Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + args.Length + " instead.");
             Console.ReadKey();
             System.Environment.Exit(1);
         }
 
-        int processId = int.Parse(args[0]);
-        int ServerPort = 0;
+        processId = int.Parse(args[0]);
 
         Console.WriteLine("BANK process started with id " + processId);
 
-        // TODO config parse and setup
 
-        try
-        {
-            Console.WriteLine("Input port number:");
-            var portString = Console.ReadLine();
-            ServerPort = Int32.Parse(portString);
-        } catch (System.FormatException)
-        {
-            Console.WriteLine("Port must be a valid integer.");
-            Environment.Exit(-1);
-        }
+        readConfig();
 
-        //TODO - Read from config file
-        //Hardcoded timeslots, duration 50 ms for 10 slots
-        Timeslots timeslots = new Timeslots(50, 10);
 
-        //TODO - Read from config file and add corresponding boney servers
-        List<ServerInfo> boneyServers = new();
-        boneyServers.Add(new ServerInfo("localhost", 2001));
-        boneyServers.Add(new ServerInfo("localhost", 2002));
-        boneyServers.Add(new ServerInfo("localhost", 2003));
 
-        const string ServerHostname = "localhost";
+        const string serverHostname = "localhost";
         BankStore store = new();
         BankServiceImpl service = new BankServiceImpl(store);
 
         Server server = new Server
         {
             Services = { BankService.BindService(service).Intercept(new ServerInterceptor()) },
-            Ports = { new ServerPort(ServerHostname, ServerPort, ServerCredentials.Insecure) }
+            Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
         };
         server.Start();
 
-        Console.WriteLine("Bank server listening on port " + ServerPort);
+        Console.WriteLine("Bank server listening on port " + serverPort);
         Console.WriteLine("Press enter to exit.");
 
         //Timeslots start with index 1!!
@@ -101,6 +86,23 @@ internal class BankApp
 
         Console.WriteLine("Server will now shutdown.");
         server.ShutdownAsync().Wait();
+    }
+
+    private static void readConfig()
+    {
+        string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
+        string config_path = Path.Combine(base_path, @"Common\config.txt");
+
+        string[] lines = File.ReadAllLines(config_path);
+        foreach (string line in lines)
+        {
+            string[] tokens = line.Split(" ");
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
+                boneyServers.Add(new BoneyServerInfo(tokens[3]));
+
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
+                serverPort = int.Parse(tokens[3].Split(":")[2]);
+        }
     }
 }
 
