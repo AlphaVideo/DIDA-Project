@@ -9,7 +9,7 @@ message CompareSwapReply {
 	int32 outvalue = 2;
 }
 
-service ConsensusService {
+service BoneyService {
 	rpc CompareAndSwap(CompareSwapRequest) returns (CompareSwapReply);
 }
 
