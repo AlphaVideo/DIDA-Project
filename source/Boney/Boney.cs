@@ -10,20 +10,18 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        int serverId = 0;
+        if (args.Length != 1)
+        {
+            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + args.Length + " instead.");
+            Console.ReadKey();
+            System.Environment.Exit(1);
+        }
+
+        int processId = int.Parse(args[0]);
         int ServerPort = 0;
 
-        try
-        {
-            Console.WriteLine("Input ID number:");
-            var idString = Console.ReadLine();
-            serverId = Int32.Parse(idString);
-        }
-        catch (System.FormatException)
-        {
-            Console.WriteLine("ID must be a valid integer.");
-            Environment.Exit(-1);
-        }
+        Console.WriteLine("BONEY process started with id " + processId);
+        
 
         //TODO - Read from config file
         try
