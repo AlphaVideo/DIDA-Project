@@ -21,6 +21,7 @@ internal class PuppetMaster
         string bank_path = Path.Combine(base_path, @"Bank\bin\Debug\net6.0\Bank.exe");
         string boney_path = Path.Combine(base_path, @"Boney\bin\Debug\net6.0\Boney.exe");
 
+        ProcessStartInfo procInfo;
 
         string[] lines = File.ReadAllLines(config_path);
         foreach (string command in lines)
@@ -33,16 +34,27 @@ internal class PuppetMaster
                 switch (tokens[2])
                 {
                     case "client":
+                        procInfo = new ProcessStartInfo(customer_path, tokens[1]);
+                        procInfo.UseShellExecute = true;
+
                         Console.WriteLine("Creating customer subprocess with id " + tokens[1]);
-                        Process.Start(customer_path, tokens[1]);
+                        Process.Start(procInfo);
                         break;
+
                     case "bank":
+                        procInfo = new ProcessStartInfo(bank_path, tokens[1]);
+                        procInfo.UseShellExecute = true;
+
                         Console.WriteLine("Creating bank subprocess with id " + tokens[1]);
-                        Process.Start(bank_path, tokens[1]);
+                        Process.Start(procInfo);
                         break;
+
                     case "boney":
+                        procInfo = new ProcessStartInfo(boney_path, tokens[1]);
+                        procInfo.UseShellExecute = true;
+
                         Console.WriteLine("Creating boney subprocess with id " + tokens[1]);
-                        Process.Start(boney_path, tokens[1]);
+                        Process.Start(procInfo);
                         break;
                 }
             }

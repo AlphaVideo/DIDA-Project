@@ -25,7 +25,7 @@ internal class BankApp
         int processId = int.Parse(args[0]);
         int ServerPort = 0;
 
-        Console.WriteLine("Bank process started with id " + processId);
+        Console.WriteLine("BANK process started with id " + processId);
 
         // TODO config parse and setup
 

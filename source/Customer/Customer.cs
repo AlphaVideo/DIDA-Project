@@ -30,7 +30,7 @@ internal class Customer
 
         int clientId = int.Parse(argv[0]);
 
-        Console.WriteLine("Customer process started with id " + clientId);
+        Console.WriteLine("CUSTOMER process started with id " + clientId);
 
 
         //TODO - Read from config file and add corresponding bank servers
