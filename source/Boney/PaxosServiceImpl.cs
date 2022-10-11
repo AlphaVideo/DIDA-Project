@@ -8,5 +8,6 @@ namespace Boney
 {
     internal class PaxosServiceImpl : PaxosService.PaxosServiceBase
     {
+
     }
 }

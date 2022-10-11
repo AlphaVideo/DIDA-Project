@@ -13,6 +13,8 @@ namespace Boney
 
         private int proposed_value = -1;
         private ConcurrentDictionary<int, int> commited_values = new ConcurrentDictionary<int, int>();
+
+
         private ConcurrentDictionary<int, int> learned_values = new ConcurrentDictionary<int, int>();
 
         public Paxos()

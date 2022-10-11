@@ -1,9 +1,11 @@
 ﻿syntax = "proto3";
 
+option csharp_namespace = "Boney";
+
 service PaxosService {
 	rpc PhaseOne(Prepare) returns (Promise);
 	rpc PhaseTwo(Accept) returns (EmptyReply);
-	rpc Commit(CommitRequest) returns (EmptyReply);
+	rpc CommitPhase(Commit) returns (EmptyReply);
 }
 
 message Prepare {
@@ -27,7 +29,6 @@ message Accept {
 	int32 n = 1;
 	int32 proposed_value = 2;
 }
-
 
 message Commit {
 	int32 accepted_value = 1;

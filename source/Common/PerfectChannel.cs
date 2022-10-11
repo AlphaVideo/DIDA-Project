@@ -2,11 +2,11 @@
 
 public class PerfectChannel
 {
-	ServerInfo serverInfo;
+	/*ServerInfo serverInfo;*/
 
-	public PerfectChannel(ServerInfo serverInfo)
+	public PerfectChannel(/*ServerInfo serverInfo*/)
 	{
-		this.serverInfo = serverInfo;
+		/*this.serverInfo = serverInfo;*/
 	}
 
 	public void PerfectSend()
