@@ -17,22 +17,21 @@ internal class Customer
     ///  The main entry point for the application.
     /// </summary>
     [STAThread]
-    static void Main()
+    static void Main(string[] argv)
     {
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
-        int clientId = 0;
-        try
+        if (argv.Length != 1)
         {
-            Console.WriteLine("Input ID number:");
-            var idString = Console.ReadLine();
-            clientId = Int32.Parse(idString);
+            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + argv.Length + " instead.");
+            Console.ReadKey();
+            System.Environment.Exit(1);
         }
-        catch (System.FormatException)
-        {
-            Console.WriteLine("ID must be a valid integer.");
-            Environment.Exit(-1);
-        }
+
+        int clientId = int.Parse(argv[0]);
+
+        Console.WriteLine("Customer process started with id " + clientId);
+
 
         //TODO - Read from config file and add corresponding bank servers
         List<ServerInfo> bankServers = new();

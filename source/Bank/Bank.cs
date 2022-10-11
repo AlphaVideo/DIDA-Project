@@ -15,18 +15,19 @@ internal class BankApp
 {
     private static void Main(string[] args)
     {
-        int serverId = 0;
-        int ServerPort = 0;
-        try
+        if (args.Length != 1)
         {
-            Console.WriteLine("Input ID number:");
-            var idString = Console.ReadLine();
-            serverId = Int32.Parse(idString);
-        } catch (System.FormatException)
-        {
-            Console.WriteLine("ID must be a valid integer.");
-            Environment.Exit(-1);
+            Console.WriteLine("Error: unexpected number of argumentos, expected 1, got " + args.Length + " instead.");
+            Console.ReadKey();
+            System.Environment.Exit(1);
         }
+
+        int processId = int.Parse(args[0]);
+        int ServerPort = 0;
+
+        Console.WriteLine("Bank process started with id " + processId);
+
+        // TODO config parse and setup
 
         try
         {
