@@ -18,19 +18,31 @@ internal class PuppetMaster
         //var parentPath = Path.GetFullPath(Path.Combine(currentPath, @"..\"));
         //var commonPath = Path.GetFullPath(Path.Combine(parentPath, "\\configuration_sample.txt"));
 
+        string config_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\Common\config.txt"));
+        Console.WriteLine("Reading config from file: " + config_path);
+
+
         string[] lines = File.ReadAllLines(@"C:\Users\tomas\source\repos\DAD Project\source\Common\configuration_sample.txt");
-        foreach (string command in lines) {
+        foreach (string command in lines)
+        {
             string[] tokens = command.Split(' ');
 
-            if (tokens[0].Equals("P")) { //New process
+            if (tokens[0].Equals("P"))
+            { //New process
 
                 switch (tokens[2])
                 {
                     case "client":
-                        Process.Start(@"C:\Users\tomas\source\repos\DAD Project\source\Customer\Customer.cs", tokens[1]);
+                        //Process.Start(@"C:\Users\tomas\source\repos\DAD Project\source\Customer\Customer.cs", tokens[1]);
+                        break;
+                    case "bank":
+                        // todo
+                        break;
+                    case "boney":
+                        // todo
                         break;
                 }
-            } 
+            }
         }
     }
 }
