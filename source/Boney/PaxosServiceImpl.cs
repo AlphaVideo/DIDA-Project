@@ -62,7 +62,7 @@ namespace Boney
                 }
 
                 // Later id but only promised was made
-                else if (status = PROMISE_STATUS.PROMISED)
+                else if (status == PROMISE_STATUS.PROMISED)
                 {
                     int prev_id = promised_ids[inst];
                     promised_ids[inst] = prepare.N;
@@ -98,9 +98,17 @@ namespace Boney
                     accepted_values[inst] = accept.ProposedValue;
                     promise_statuses[inst] = PROMISE_STATUS.ACCEPTED;
 
-                    foreach (ServerInfo learner in paxos.learners)
+                    CommitRequest commit = new CommitRequest
                     {
-                        Thread thread = new Thread(() => paxos.SendCommit(learner, accept.ProposedValue));
+                        ConsensusInstance = inst,
+                        CommitGeneration = accept.N,
+                        AcceptorId = paxos.Id,
+                        AcceptedValue = accepted_values[inst]
+                    };
+
+                    foreach (ServerInfo learner in paxos.Learners)
+                    {
+                        Thread thread = new Thread(() => SendCommit(learner, commit));
                         thread.Start();
                     }
                 }
@@ -111,13 +119,14 @@ namespace Boney
 
         public override Task<EmptyReply> Commit(CommitRequest commit, ServerCallContext context)
         {
-
+            paxos.Learner(commit);
             return Task.FromResult(new EmptyReply());
         }
 
-        private void SendCommit(ServerInfo server_to_contact, int value_to_commit)
+        private void SendCommit(ServerInfo server_to_contact, CommitRequest commit)
         {
-            // Send CommitRequest to server
+            PaxosService.PaxosServiceClient client = new PaxosService.PaxosServiceClient(server_to_contact.Channel);
+            client.Commit(commit);
         }
     }
 }

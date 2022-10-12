@@ -35,7 +35,9 @@ message Accept {
 
 message CommitRequest {
 	int32 consensus_instance = 1;
-	int32 accepted_value = 2;
+	int32 commit_generation = 2;
+	int32 acceptor_id = 3;
+	int32 accepted_value = 4;
 }
 
 message EmptyReply {

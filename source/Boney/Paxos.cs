@@ -13,8 +13,8 @@ namespace Boney
     {
         int id;
         int n;
-        private List<ServerInfo> acceptors { get; }
-        private List<ServerInfo> learners { get; }
+        private List<ServerInfo> acceptors;
+        private List<ServerInfo> learners;
 
         private ManualResetEvent paxos_leader = new ManualResetEvent(false);
         private List<int> proposed = new List<int>();
@@ -25,21 +25,28 @@ namespace Boney
 
 
         private ManualResetEvent consensus_reached = new ManualResetEvent(false);
-        private List<List<int>> commits = new List<List<int>>();
+        private List<List<Tuple<int, int>>> commits = new List<List<Tuple<int, int>>>();
         private List<int> learned  = new List<int>();
 
 
-        public Paxos(int id)
+        public Paxos(int id, List<ServerInfo> paxos_servers)
         {
             this.id = id;
             this.n = id;
 
-            proposer = new Thread(() => Proposer());
-            proposer.start();
+            acceptors = paxos_servers;
+            learners = paxos_servers;
 
-            fail_detector = new Thread(() => MagicFailDetector());
-            fail_detector.start();
+            proposer = new Thread(Proposer);
+            proposer.Start();
+
+            fail_detector = new Thread(MagicFailDetector);
+            fail_detector.Start();
         }
+
+        public int Id => id;
+        public List<ServerInfo> Acceptors => acceptors;
+        public List<ServerInfo> Learners => learners;
 
         public int Consensus(int consensus_number, int proposed_value)
         {
@@ -68,11 +75,11 @@ namespace Boney
         private void Proposer()
         {
             ManualResetEvent[] can_propose = { value_proposed, paxos_leader };
-            PaxosService.PaxosServiceClient[] clients = PaxosService.PaxosServiceClient[acceptors.Count];
+            PaxosService.PaxosServiceClient[] clients = new PaxosService.PaxosServiceClient[acceptors.Count];
 
             for (int i = 0; i < acceptors.Count; i++)
             {
-                clients[i] = new PaxosService.PaxosServiceClient(acceptor_info.GetChannel());
+                clients[i] = new PaxosService.PaxosServiceClient(acceptors[i].Channel);
             }
 
             while (true)
@@ -80,7 +87,7 @@ namespace Boney
                 // Wait for permission to propose
                 WaitHandle.WaitAll(can_propose);
 
-                Task<Promise>[] pending_requests = Task<Promise>[acceptors.Count];
+                Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
                 List<Task<Promise>> completed_requests = new List<Task<Promise>>();
                 
                 // Send prepare request to all acceptors
@@ -108,7 +115,7 @@ namespace Boney
 
                 // Process promises
                 int max_m = -1;
-                int max_m_proposal;
+                int max_m_proposal = 0;
                 bool end_proposal = false;
 
                 for (int i = 0; i < completed_requests.Count; i++)
@@ -119,12 +126,14 @@ namespace Boney
                     {
                         case Promise.Types.PROMISE_STATUS.Nack:
                             end_proposal = true;
+                            break;
                         case Promise.Types.PROMISE_STATUS.PrevAccepted:
-                            if (reply.M > max_M)
+                            if (reply.M > max_m)
                             {
                                 max_m = reply.M; 
                                 max_m_proposal = reply.PrevProposedValue;
                             }
+                            break;
                     }
                 }
 
@@ -140,9 +149,48 @@ namespace Boney
                 };
                 foreach (PaxosService.PaxosServiceClient client in clients)
                 {
-                    ThreadPool.QueueUserWorkItem(() => client.PhaseTwo(request));
+                    // TODO perfect channel
+                    Thread thread = new Thread(() => client.PhaseTwo(request));
+                    thread.Start();
                 }
                 paxos_leader.Reset();
+            }
+        }
+
+        public void Learner(CommitRequest commit)
+        {
+            lock (this)
+            {
+                // Make sure the commits list has entries for this consensus is this necessary?
+                while (!(commits.Count > commit.ConsensusInstance))
+                {
+                    List<Tuple<int, int>> list = new List<Tuple<int, int>>();
+                    for (int i = 0; i < acceptors.Count; i++)
+                    {
+                        list.Add(new Tuple<int, int>(-1, -1));
+                    }
+                    commits.Add(list);
+                }
+
+                List<Tuple<int, int>> current_commits = commits[commit.ConsensusInstance];
+
+                // if Commit is of older generation ignore else swap
+                if (current_commits[commit.AcceptorId - 1].Item1 > commit.CommitGeneration) { return; }
+                else { current_commits[commit.AcceptorId] = new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue); }
+
+                // Check if a majority has been achieved
+                int gen_count = current_commits.FindAll((tuple) => tuple.Item1 == commit.CommitGeneration).Count();
+                if (gen_count < acceptors.Count / 2) { return; }
+
+                // Make sure the learned list has entries for this consensus is this necessary?
+                while (!(learned.Count > commit.ConsensusInstance))
+                {
+                    learned.Add(-1);
+                }
+
+                // Write consensus result and unblock main thread
+                learned[commit.ConsensusInstance] = commit.AcceptedValue;
+                consensus_reached.Set();
             }
         }
 
