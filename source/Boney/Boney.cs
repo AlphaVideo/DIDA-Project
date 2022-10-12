@@ -44,9 +44,11 @@ internal class Program
                 boneyServers.Add(new ServerInfo("localhost", port));
         }
 
+        Paxos paxos = new Paxos(processId, boneyServers);
+
         const string ServerHostname = "localhost";
         BoneyServiceImpl boneyService = new BoneyServiceImpl();
-        PaxosServiceImpl paxosService = new PaxosServiceImpl();
+        PaxosServiceImpl paxosService = new PaxosServiceImpl(paxos);
 
         Server server = new Server
         {

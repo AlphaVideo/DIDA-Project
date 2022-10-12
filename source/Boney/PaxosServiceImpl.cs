@@ -20,10 +20,16 @@ namespace Boney
             ACCEPTED
         }
 
+        // Acceptor status for each consensus instance
         private List<PROMISE_STATUS> promise_statuses = new List<PROMISE_STATUS>();
+
+        // Promised generation numbers
         private List<int> promised_ids = new List<int>();
+
+        // Last value accepted and commited for each consensus instance
         private List<int> accepted_values = new List<int>();
 
+        // Paxos object
         private Paxos paxos;
 
         public PaxosServiceImpl(Paxos paxos)
@@ -32,8 +38,7 @@ namespace Boney
         }
 
 
-        public override Task<Promise> PhaseOne(
-        Prepare prepare, ServerCallContext context)
+        public override Task<Promise> PhaseOne(Prepare prepare, ServerCallContext context)
         {
             lock (this) 
             { 
@@ -78,6 +83,9 @@ namespace Boney
                 {
                     int prev_id = promised_ids[inst];
                     promised_ids[inst] = prepare.N;
+                    // TODO PROMISED?
+                    status = PROMISE_STATUS.PROMISED;
+
                     return Task.FromResult(new Promise
                     {
                         Status = Promise.Types.PROMISE_STATUS.PrevAccepted,
@@ -103,7 +111,7 @@ namespace Boney
                         ConsensusInstance = inst,
                         CommitGeneration = accept.N,
                         AcceptorId = paxos.Id,
-                        AcceptedValue = accepted_values[inst]
+                        AcceptedValue = accept.ProposedValue
                     };
 
                     foreach (ServerInfo learner in paxos.Learners)

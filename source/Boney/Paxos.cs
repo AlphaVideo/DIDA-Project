@@ -11,21 +11,31 @@ namespace Boney
 {
     internal class Paxos
     {
+        // Server id
         int id;
+        // Proposal number
         int n;
+
+        // Addresses of learners and acceptor
         private List<ServerInfo> acceptors;
         private List<ServerInfo> learners;
 
-        private ManualResetEvent paxos_leader = new ManualResetEvent(false);
-        private List<int> proposed = new List<int>();
+        // Proposer Variables
         private Thread proposer;
+        private List<int> proposed = new List<int>();
 
-        private ManualResetEvent value_proposed = new ManualResetEvent(false);
+        // Paxos leader detection
         private Thread fail_detector;
+        private ManualResetEvent paxos_leader = new ManualResetEvent(false);
 
+        // A value has been proposed by a bank for concsensus
+        private ManualResetEvent value_proposed = new ManualResetEvent(false);
 
+        // Learners Variables
         private ManualResetEvent consensus_reached = new ManualResetEvent(false);
         private List<List<Tuple<int, int>>> commits = new List<List<Tuple<int, int>>>();
+
+        // Values decided in each consensus
         private List<int> learned  = new List<int>();
 
 
@@ -54,10 +64,11 @@ namespace Boney
             if (consensus_number < learned.Count) { return learned[consensus_number]; }
 
             // TODO [when a consensus is asked for a timestamp in the future] is this case needed?
-            if (consensus_number != learned.Count) { return -1; }
+            if (consensus_number > learned.Count) { return -1; }
 
             // setup proposer
             n = id;
+            // TODO add capabilities
             proposed.Add(proposed_value);
             value_proposed.Set();
 
@@ -137,7 +148,9 @@ namespace Boney
                     }
                 }
 
-                if (end_proposal) { continue; }
+                // TODO better leader selection policy
+                if (end_proposal) { paxos_leader.Reset();  continue; }
+                // TODO better proposed list access
                 if (max_m > 0) { proposed[proposed.Count - 1] = max_m_proposal; }
 
                 // Send accept requests to acceptors with proposed value
@@ -153,6 +166,8 @@ namespace Boney
                     Thread thread = new Thread(() => client.PhaseTwo(request));
                     thread.Start();
                 }
+
+                // TODO must create better leader selection policy
                 paxos_leader.Reset();
             }
         }
@@ -176,7 +191,7 @@ namespace Boney
 
                 // if Commit is of older generation ignore else swap
                 if (current_commits[commit.AcceptorId - 1].Item1 > commit.CommitGeneration) { return; }
-                else { current_commits[commit.AcceptorId] = new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue); }
+                else { current_commits[commit.AcceptorId - 1] = new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue); }
 
                 // Check if a majority has been achieved
                 int gen_count = current_commits.FindAll((tuple) => tuple.Item1 == commit.CommitGeneration).Count();
@@ -199,7 +214,11 @@ namespace Boney
             // TODO how to detect if this process must be a leader and propose a value?
             if (id == 1)
             {
-                paxos_leader.Set();
+                while (true)
+                {
+                    Thread.Sleep(500);
+                    paxos_leader.Set();
+                }
             }
         }
 
