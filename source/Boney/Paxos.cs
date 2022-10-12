@@ -68,6 +68,7 @@ namespace Boney
         public List<ServerInfo> Acceptors => acceptors;
         public List<ServerInfo> Learners => learners;
 
+        //Consensus number = bank timeslot slot id
         public int Consensus(int consensus_number, int proposed_value)
         {
             // Check if the value has been learned
@@ -205,16 +206,33 @@ namespace Boney
             }
         }
 
+        //Leader is assumed to be smallest non-suspected process id
         private void MagicFailDetector()
         {
-            // TODO how to detect if this process must be a leader and propose a value?
-            if (id == 1)
+            //TODO - Maybe add a wait for when already leader?
+            var smallestOther = otherBoneyIds.Min();
+            
+            //Smallest id process will always try to be leader
+            if(id < smallestOther)
             {
-                while (true)
+                paxos_leader.Set();
+            }
+            //Other processes will try to compete based on suspicion 
+            else
+            {
+                List<int> possibleLeaders = new List<int>(otherBoneyIds);
+                foreach (int suspect in suspected[proposer_consensus]) //Get suspected ids from "slot" info
                 {
-                    Thread.Sleep(500);
-                    paxos_leader.Set();
+                    possibleLeaders.Remove(suspect);
                 }
+
+                smallestOther = possibleLeaders.Min();
+
+                //If I'm the smallest "working" id, I'm the leader
+                if (id < smallestOther)
+                    paxos_leader.Set();
+                else
+                    Thread.Sleep(500);
             }
         }
 
@@ -235,7 +253,7 @@ namespace Boney
                 if (tokens.Length > 1 && tokens[0] == "F")
                 {
                     var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
-                    List<int> susList = new(); 
+                    List<int> susList = new(); //Sorting key is the same as value
 
                     foreach (var match in tuples)
                     {
