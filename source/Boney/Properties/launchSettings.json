@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Boney": {
+      "commandName": "Project",
+      "commandLineArgs": "1"
+    }
+  }
+}

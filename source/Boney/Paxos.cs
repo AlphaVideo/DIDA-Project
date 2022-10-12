@@ -3,8 +3,10 @@ using Grpc.Core;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Boney
@@ -15,6 +17,9 @@ namespace Boney
         int id;
         // Proposal number
         int n;
+        //Fail detection list: SlotID -> Sus IDs 
+        Dictionary<int, List<int>> suspected = new();
+        List<int> otherBoneyIds = new();
 
         // Addresses of learners and acceptor
         private readonly List<ServerInfo> acceptors;
@@ -49,6 +54,8 @@ namespace Boney
             learners = paxos_servers;
 
             commits = new InfiniteList<InfiniteList<Tuple<int, int>>>(new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(-1, -1)));
+
+            readConfig();
 
             proposer = new Thread(Proposer);
             proposer.Start();
@@ -211,8 +218,45 @@ namespace Boney
             }
         }
 
+        //Prepare "schedule" for Fail Detector
+        private void readConfig()
+        {
+            string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
+            string config_path = Path.Combine(base_path, @"Common\config.txt");
 
+            string[] lines = File.ReadAllLines(config_path);
+            foreach (string line in lines)
+            {
+                string[] tokens = line.Split(" ");
 
+                if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && Int32.Parse(tokens[1]) != id)
+                    otherBoneyIds.Add(Int32.Parse(tokens[1]));
+
+                if (tokens.Length > 1 && tokens[0] == "F")
+                {
+                    var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
+                    List<int> susList = new(); 
+
+                    foreach (var match in tuples)
+                    {
+                        string tuple = match.ToString();
+                        char[] charsToTrim = { '(', ')' };
+                        var info = tuple.Trim(charsToTrim);
+
+                        //State = (PID, Frozen?, Suspected?)
+                        var state = info.Split(",");
+                        var pid = Int32.Parse(state[0]);
+
+                        //Only suspect other boney processes
+                        if (otherBoneyIds.Contains(pid) && state[2].Equals("S")) 
+                            susList.Add(pid); 
+                        
+                    }
+
+                    suspected.Add(Int32.Parse(tokens[1]), susList);
+                }
+            }
+        }
 
     }
 }
