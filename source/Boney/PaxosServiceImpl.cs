@@ -21,13 +21,13 @@ namespace Boney
         }
 
         // Acceptor status for each consensus instance
-        private List<PROMISE_STATUS> promise_statuses = new List<PROMISE_STATUS>();
+        private InfiniteList<PROMISE_STATUS> promise_statuses = new InfiniteList<PROMISE_STATUS>(PROMISE_STATUS.NOT_PROMISED);
 
         // Promised generation numbers
-        private List<int> promised_ids = new List<int>();
+        private InfiniteList<int> promised_ids = new InfiniteList<int>(-1);
 
         // Last value accepted and commited for each consensus instance
-        private List<int> accepted_values = new List<int>();
+        private InfiniteList<int> accepted_values = new InfiniteList<int>(-1);
 
         // Paxos object
         private Paxos paxos;
@@ -43,13 +43,13 @@ namespace Boney
             lock (this) 
             { 
                 int inst = prepare.ConsensusInstance;
-                PROMISE_STATUS status = promise_statuses[inst];
+                PROMISE_STATUS status = promise_statuses.GetItem(inst);
 
                 // First proposal for this instance
                 if (status == PROMISE_STATUS.NOT_PROMISED)
                 {
-                    promised_ids[inst] = prepare.N;
-                    promise_statuses[inst] = PROMISE_STATUS.PROMISED;
+                    promised_ids.SetItem(inst, prepare.N);
+                    promise_statuses.SetItem(inst, PROMISE_STATUS.PROMISED);
 
                     return Task.FromResult(new Promise
                     {
@@ -58,7 +58,7 @@ namespace Boney
                 }
 
                 // Ignore proposal
-                else if (prepare.N < promised_ids[inst])
+                else if (prepare.N < promised_ids.GetItem(inst))
                 {
                     return Task.FromResult(new Promise
                     {
@@ -69,8 +69,8 @@ namespace Boney
                 // Later id but only promised was made
                 else if (status == PROMISE_STATUS.PROMISED)
                 {
-                    int prev_id = promised_ids[inst];
-                    promised_ids[inst] = prepare.N;
+                    int prev_id = promised_ids.GetItem(inst);
+                    promised_ids.SetItem(inst, prepare.N);
                     return Task.FromResult(new Promise
                     {
                         Status = Promise.Types.PROMISE_STATUS.PrevPromised,
@@ -81,8 +81,8 @@ namespace Boney
                 // Later id and already accepted value
                 else
                 {
-                    int prev_id = promised_ids[inst];
-                    promised_ids[inst] = prepare.N;
+                    int prev_id = promised_ids.GetItem(inst);
+                    promised_ids.SetItem(inst, prepare.N);
                     // TODO PROMISED?
                     status = PROMISE_STATUS.PROMISED;
 
@@ -90,7 +90,7 @@ namespace Boney
                     {
                         Status = Promise.Types.PROMISE_STATUS.PrevAccepted,
                         M = prev_id,
-                        PrevProposedValue = accepted_values[inst]
+                        PrevProposedValue = accepted_values.GetItem(inst)
                     });
                 }
             }
@@ -101,10 +101,10 @@ namespace Boney
             lock (this)
             {
                 int inst = accept.ConsensusInstance;
-                if (promise_statuses[inst] == PROMISE_STATUS.NOT_PROMISED || accept.N >= promised_ids[inst])
+                if (promise_statuses.GetItem(inst) == PROMISE_STATUS.NOT_PROMISED || accept.N >= promised_ids.GetItem(inst))
                 {
-                    accepted_values[inst] = accept.ProposedValue;
-                    promise_statuses[inst] = PROMISE_STATUS.ACCEPTED;
+                    accepted_values.SetItem(inst, accept.ProposedValue);
+                    promise_statuses.SetItem(inst, PROMISE_STATUS.ACCEPTED);
 
                     CommitRequest commit = new CommitRequest
                     {

@@ -17,12 +17,13 @@ namespace Boney
         int n;
 
         // Addresses of learners and acceptor
-        private List<ServerInfo> acceptors;
-        private List<ServerInfo> learners;
+        private readonly List<ServerInfo> acceptors;
+        private readonly List<ServerInfo> learners;
 
         // Proposer Variables
         private Thread proposer;
-        private List<int> proposed = new List<int>();
+        private int proposer_consensus;
+        private InfiniteList<int> proposed = new InfiniteList<int>(-1);
 
         // Paxos leader detection
         private Thread fail_detector;
@@ -33,10 +34,10 @@ namespace Boney
 
         // Learners Variables
         private ManualResetEvent consensus_reached = new ManualResetEvent(false);
-        private List<List<Tuple<int, int>>> commits = new List<List<Tuple<int, int>>>();
+        private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
 
         // Values decided in each consensus
-        private List<int> learned  = new List<int>();
+        private InfiniteList<int> learned  = new InfiniteList<int>(-1);
 
 
         public Paxos(int id, List<ServerInfo> paxos_servers)
@@ -46,6 +47,8 @@ namespace Boney
 
             acceptors = paxos_servers;
             learners = paxos_servers;
+
+            commits = new InfiniteList<InfiniteList<Tuple<int, int>>>(new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(-1, -1)));
 
             proposer = new Thread(Proposer);
             proposer.Start();
@@ -69,7 +72,8 @@ namespace Boney
             // setup proposer
             n = id;
             // TODO add capabilities
-            proposed.Add(proposed_value);
+            proposer_consensus = consensus_number;
+            proposed.SetItem(consensus_number, proposed_value);
             value_proposed.Set();
 
             // wait for consensus to end
@@ -98,6 +102,7 @@ namespace Boney
                 // Wait for permission to propose
                 WaitHandle.WaitAll(can_propose);
 
+                int inst = proposer_consensus;
                 Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
                 List<Task<Promise>> completed_requests = new List<Task<Promise>>();
                 
@@ -150,15 +155,14 @@ namespace Boney
 
                 // TODO better leader selection policy
                 if (end_proposal) { paxos_leader.Reset();  continue; }
-                // TODO better proposed list access
-                if (max_m > 0) { proposed[proposed.Count - 1] = max_m_proposal; }
+                if (max_m > 0) { proposed.SetItem(inst, max_m_proposal); }
 
                 // Send accept requests to acceptors with proposed value
                 Accept request = new Accept
                 {
-                    ConsensusInstance = proposed.Count,
+                    ConsensusInstance = inst,
                     N = n,
-                    ProposedValue = proposed.Last()
+                    ProposedValue = proposed.GetItem(inst)
                 };
                 foreach (PaxosService.PaxosServiceClient client in clients)
                 {
@@ -176,35 +180,20 @@ namespace Boney
         {
             lock (this)
             {
-                // Make sure the commits list has entries for this consensus is this necessary?
-                while (!(commits.Count > commit.ConsensusInstance))
-                {
-                    List<Tuple<int, int>> list = new List<Tuple<int, int>>();
-                    for (int i = 0; i < acceptors.Count; i++)
-                    {
-                        list.Add(new Tuple<int, int>(-1, -1));
-                    }
-                    commits.Add(list);
-                }
 
-                List<Tuple<int, int>> current_commits = commits[commit.ConsensusInstance];
+                int acceptor_i = commit.AcceptorId - 1;
+                InfiniteList<Tuple<int, int>> current_commits = commits.GetItem(commit.ConsensusInstance);
 
                 // if Commit is of older generation ignore else swap
-                if (current_commits[commit.AcceptorId - 1].Item1 > commit.CommitGeneration) { return; }
-                else { current_commits[commit.AcceptorId - 1] = new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue); }
+                if (current_commits.GetItem(acceptor_i).Item1 > commit.CommitGeneration) { return; }
+                else { current_commits.SetItem(acceptor_i, new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue)); }
 
                 // Check if a majority has been achieved
                 int gen_count = current_commits.FindAll((tuple) => tuple.Item1 == commit.CommitGeneration).Count();
                 if (gen_count < acceptors.Count / 2) { return; }
 
-                // Make sure the learned list has entries for this consensus is this necessary?
-                while (!(learned.Count > commit.ConsensusInstance))
-                {
-                    learned.Add(-1);
-                }
-
                 // Write consensus result and unblock main thread
-                learned[commit.ConsensusInstance] = commit.AcceptedValue;
+                learned.SetItem(commit.ConsensusInstance, commit.AcceptedValue);
                 consensus_reached.Set();
             }
         }
