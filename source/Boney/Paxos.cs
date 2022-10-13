@@ -79,7 +79,7 @@ namespace Boney
             if (consensus_number < learned.Count) { return learned[consensus_number]; }
 
             // TODO [when a consensus is asked for a timestamp in the future] is this case needed?
-            if (consensus_number > learned.Count) { return -1; }
+            //if (consensus_number > learned.Count) { return -1; }
 
             // setup proposer
             n = id;
@@ -88,13 +88,19 @@ namespace Boney
             proposed.SetItem(consensus_number, proposed_value);
             value_proposed.Set();
 
+            Console.WriteLine("[P] Main thread paused, waiting for consensus.");
             // wait for consensus to end
             consensus_reached.WaitOne();
+            Console.WriteLine("[P] Consensus reached.");
 
             // reset events (stop proposer)
             consensus_reached.Reset();
             value_proposed.Reset();
 
+            foreach (int i in learned)
+            {
+                Console.Write("{0}, ", i);
+            }
 
             return learned[consensus_number];
         }
@@ -117,15 +123,18 @@ namespace Boney
                 int inst = proposer_consensus;
                 Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
                 List<Task<Promise>> completed_requests = new List<Task<Promise>>();
-                
+
                 // Send prepare request to all acceptors
+                Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
                 for (int i = 0; i < acceptors.Count; i++)
                 {
+                    Console.WriteLine("Paxos LINE 131");
                     // TODO perfect channel
                     pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { N = n })); 
                     pending_requests[i].Start();
                 }
 
+                Console.WriteLine("Paxos LINE 137");
                 // Wait for a majority of answers
                 while (pending_requests.Length > completed_requests.Count)
                 {
@@ -176,6 +185,8 @@ namespace Boney
                     N = n,
                     ProposedValue = proposed.GetItem(inst)
                 };
+                Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposed.GetItem(inst));
+
                 foreach (PaxosService.PaxosServiceClient client in clients)
                 {
                     // TODO perfect channel

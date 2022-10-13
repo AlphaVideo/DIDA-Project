@@ -20,6 +20,7 @@ internal class Program
 
         int processId = int.Parse(args[0]);
 
+        Console.SetWindowSize(80, 20);
         Console.WriteLine("BONEY process started with id " + processId);
         
         List<ServerInfo> boneyServers = new();

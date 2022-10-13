@@ -16,12 +16,15 @@ namespace Boney
         }
         public override Task<CompareSwapReply> CompareAndSwap(CompareSwapRequest request, ServerCallContext context)
         {
+            int val;
             CompareSwapReply reply = new();
 
             // TODO frozen state
+            Console.WriteLine("[B] Received CaS for slot {0} with value {1}", request.Slot, request.Invalue);
+            val = _paxos.Consensus(request.Slot, request.Invalue);
+            Console.WriteLine("[B] Reached consensus with value {0}", val);
 
-            reply.Outvalue = _paxos.Consensus(request.Slot, request.Invalue);
-
+            reply.Outvalue = val;
 
             return Task.FromResult(reply);
         }

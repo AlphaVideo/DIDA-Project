@@ -45,9 +45,11 @@ namespace Boney
                 int inst = prepare.ConsensusInstance;
                 PROMISE_STATUS status = promise_statuses.GetItem(inst);
 
+                Console.WriteLine("PaxosService LINE 48");
                 // First proposal for this instance
                 if (status == PROMISE_STATUS.NOT_PROMISED)
                 {
+                    Console.WriteLine("PaxosService LINE 52");
                     promised_ids.SetItem(inst, prepare.N);
                     promise_statuses.SetItem(inst, PROMISE_STATUS.PROMISED);
 
