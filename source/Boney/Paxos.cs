@@ -154,10 +154,12 @@ namespace Boney
                 int max_m = -1;
                 int max_m_proposal = 0;
                 bool end_proposal = false;
-
+                Console.WriteLine("Completed requests: " + completed_requests.Count);
                 for (int i = 0; i < completed_requests.Count; i++)
                 {
-                    Promise reply = completed_requests[i].Result;
+                    var task = completed_requests[i];
+                    var reply = task.Result;
+
 
                     switch (reply.Status)
                     {
