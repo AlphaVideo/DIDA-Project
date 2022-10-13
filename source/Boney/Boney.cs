@@ -4,6 +4,7 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 internal class Program
@@ -18,51 +19,52 @@ internal class Program
         }
 
         int processId = int.Parse(args[0]);
-        int ServerPort = 0;
 
         Console.WriteLine("BONEY process started with id " + processId);
         
-
-        //TODO - Read from config file
-        try
-        {
-            Console.WriteLine("Input port number:");
-            var portString = Console.ReadLine();
-            ServerPort = Int32.Parse(portString);
-        }
-        catch (System.FormatException)
-        {
-            Console.WriteLine("Port must be a valid integer.");
-            Environment.Exit(-1);
-        }
-
-        //Hardcoded - add other boney servers (exclude self)
-        int[] ports = { 2001, 2002, 2003 };
         List<ServerInfo> boneyServers = new();
-        foreach(int port in ports) {
-            if(port != ServerPort)
-                boneyServers.Add(new ServerInfo("localhost", port));
-        }
+        int serverPort = readConfig(processId, boneyServers);
 
         Paxos paxos = new Paxos(processId, boneyServers);
 
         const string ServerHostname = "localhost";
-        BoneyServiceImpl boneyService = new BoneyServiceImpl();
+        BoneyServiceImpl boneyService = new BoneyServiceImpl(paxos);
         PaxosServiceImpl paxosService = new PaxosServiceImpl(paxos);
 
         Server server = new Server
         {
             Services = { BoneyService.BindService(boneyService), PaxosService.BindService(paxosService) },
-            Ports = { new ServerPort(ServerHostname, ServerPort, ServerCredentials.Insecure) }
+            Ports = { new ServerPort(ServerHostname, serverPort, ServerCredentials.Insecure) }
         };
         server.Start();
 
         //TODO - Create Paxos object here? Or maybe in BoneyImpl
 
-        Console.WriteLine("Boney server listening on port " + ServerPort);
-        Console.WriteLine("Press enter to exit.");
-
+        Console.WriteLine("Boney server listening on port " + serverPort);
+        Console.WriteLine("Press any key to exit.");
+        Console.ReadKey();
         Console.WriteLine("Boney server will now shutdown.");
         server.ShutdownAsync().Wait();
+    }
+
+    private static int readConfig(int processId, List<ServerInfo> boneyServers)
+    {
+        string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
+        string config_path = Path.Combine(base_path, @"Common\config.txt");
+
+        int serverPort = 0;
+
+        string[] lines = File.ReadAllLines(config_path);
+        foreach (string line in lines)
+        {
+            string[] tokens = line.Split(" ");
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && tokens[1] != processId.ToString())
+                boneyServers.Add(new ServerInfo(tokens[3]));
+
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
+                serverPort = int.Parse(tokens[3].Split(":")[2]);
+
+        }
+        return serverPort;
     }
 }

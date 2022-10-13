@@ -50,12 +50,12 @@ internal class BankApp
         Console.WriteLine("Press enter to exit.");
 
         //Timeslots start with index 1!!
-        for(int i = 1; i < timeslots.getMaxSlots(); i++)
+        for(int i = 1; i <= timeslots.getMaxSlots(); i++)
         {
-            //Assuming bank servers are running as processes 1,2 and 3
+            //Assuming bank servers are running as processes 4,5 and 6
             //Asks for consensus on who's the leader with random bank server as invalue candidate
             Random rnd = new Random();
-            int candidate = rnd.Next(1, 4);
+            int candidate = rnd.Next(4, 7);
 
             foreach (ServerInfo boney in boneyServers)
             {
@@ -64,11 +64,12 @@ internal class BankApp
                     var request = new CompareSwapRequest { Slot = i, Invalue = candidate };
                     var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
                     var reply = boneyClient.CompareAndSwap(request);
-                    Console.WriteLine("Consensus result: Server with ID " + reply.Outvalue + " is primary server");
+                    Console.WriteLine("[{}] Consensus result: Server with ID {} is primary server for slot {}.",
+                        boney.Address, reply.Outvalue, i); // TODO in real system get real timestamp instead of `i`
                 }
                 catch (Grpc.Core.RpcException) // Server down (different from frozen)
                 {
-                    Console.WriteLine("Boney server " + server + " could not be reached.");
+                    Console.WriteLine("Boney server " + boney + " could not be reached.");
                 }
             }
         }
@@ -93,6 +94,8 @@ internal class BankApp
         string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
         string config_path = Path.Combine(base_path, @"Common\config.txt");
 
+        int slot_duration = 0, slot_count = 0;
+
         string[] lines = File.ReadAllLines(config_path);
         foreach (string line in lines)
         {
@@ -102,7 +105,14 @@ internal class BankApp
 
             if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
                 serverPort = int.Parse(tokens[3].Split(":")[2]);
+
+            if (tokens.Length == 2 && tokens[0] == "S")
+                slot_count = int.Parse(tokens[1]);
+
+            if (tokens.Length == 2 && tokens[0] == "D")
+                slot_duration = int.Parse(tokens[1]);
         }
+        timeslots = new Timeslots(slot_duration, slot_count);
     }
 }
 

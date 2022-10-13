@@ -18,7 +18,7 @@ namespace Boney
         {
             CompareSwapReply reply = new();
 
-            // how to know when frozen?
+            // TODO frozen state
 
             reply.Outvalue = _paxos.Consensus(request.Slot, request.Invalue);
 

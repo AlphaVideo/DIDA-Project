@@ -21,6 +21,9 @@ namespace Boney
         Dictionary<int, List<int>> suspected = new();
         List<int> otherBoneyIds = new();
 
+        // slot id
+        int slot_id = 1;
+
         // Addresses of learners and acceptor
         private readonly List<ServerInfo> acceptors;
         private readonly List<ServerInfo> learners;
@@ -71,6 +74,7 @@ namespace Boney
         //Consensus number = bank timeslot slot id
         public int Consensus(int consensus_number, int proposed_value)
         {
+            slot_id = consensus_number;
             // Check if the value has been learned
             if (consensus_number < learned.Count) { return learned[consensus_number]; }
 
@@ -210,30 +214,21 @@ namespace Boney
         private void MagicFailDetector()
         {
             //TODO - Maybe add a wait for when already leader?
-            var smallestOther = otherBoneyIds.Min();
             
-            //Smallest id process will always try to be leader
-            if(id < smallestOther)
+            List<int> possibleLeaders = new List<int>(otherBoneyIds);
+
+            foreach (int suspect in suspected[slot_id]) //Get suspected ids from "slot" info
             {
+                possibleLeaders.Remove(suspect);
+            }
+
+            int smallestOther = possibleLeaders.Min();
+
+            //If I'm the smallest "working" id, I'm the leader
+            if (id < smallestOther)
                 paxos_leader.Set();
-            }
-            //Other processes will try to compete based on suspicion 
             else
-            {
-                List<int> possibleLeaders = new List<int>(otherBoneyIds);
-                foreach (int suspect in suspected[proposer_consensus]) //Get suspected ids from "slot" info
-                {
-                    possibleLeaders.Remove(suspect);
-                }
-
-                smallestOther = possibleLeaders.Min();
-
-                //If I'm the smallest "working" id, I'm the leader
-                if (id < smallestOther)
-                    paxos_leader.Set();
-                else
-                    Thread.Sleep(500);
-            }
+                Thread.Sleep(500);
         }
 
         //Prepare "schedule" for Fail Detector
