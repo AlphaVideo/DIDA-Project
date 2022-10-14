@@ -185,6 +185,7 @@ namespace Boney
                         }
                     } catch(Exception e)
                     {
+                        Console.WriteLine("EXCEPTION CAUGHT");
                         Console.WriteLine(e);
                         Console.ReadKey();
                     }
