@@ -28,7 +28,7 @@ internal class BankApp
 
         processId = int.Parse(args[0]);
 
-        Console.SetWindowSize(80, 20);
+        Console.SetWindowSize(70, 20);
         Console.WriteLine("BANK process started with id " + processId);
 
         readConfig();

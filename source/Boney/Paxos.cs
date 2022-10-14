@@ -149,12 +149,12 @@ namespace Boney
 
                         completed_requests.Add(pending_requests[completedIndex]);
 
-                        for (int i = 0; i < pending_requests.Length-1; i++)
+                        for (int i = 0; i < pending_requests.Length - 1; i++)
                         {
                             if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
                         }
 
-                        Array.Resize(ref pending_requests, pending_requests.Length-1);
+                        Array.Resize(ref pending_requests, pending_requests.Length - 1);
                     }
 
                     // Process promises
