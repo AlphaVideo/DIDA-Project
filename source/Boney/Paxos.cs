@@ -14,9 +14,7 @@ namespace Boney
     internal class Paxos
     {
         // Server id
-        int id;
-        // Proposal number
-        int n;
+        readonly int id;
 
         // Addresses of learners and acceptor
         private readonly List<ServerInfo> acceptors;
@@ -24,7 +22,7 @@ namespace Boney
 
         // Magic Fail Detector Variables
         int timeslot_ms;
-        List<bool> is_leader = new();
+        InfiniteList<bool> is_leader = new(true);
 
 
         // Proposer lock
@@ -32,6 +30,7 @@ namespace Boney
         // Proposer Variables
         private Thread proposer;
         private int consensusRound;
+        private InfiniteList<int> numberOfTries = new InfiniteList<int>(0);
         private InfiniteList<int> proposeValue = new InfiniteList<int>(0);
 
         // Paxos leader detection
@@ -44,7 +43,7 @@ namespace Boney
         // Learner lock
         private readonly object learner_lock = new object();
         // Learners Variables
-        private ManualResetEvent consensusReachedTrigger = new ManualResetEvent(false);
+        private ManualResetEvent consensusReachedTrigger = new(false);
         private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
 
         // Values decided in each consensus (key=round, value=consensusResult)
@@ -54,7 +53,6 @@ namespace Boney
         public Paxos(int id, List<ServerInfo> paxos_servers)
         {
             this.id = id;
-            this.n = id;
 
             acceptors = paxos_servers;
             learners = paxos_servers;
@@ -82,8 +80,6 @@ namespace Boney
 
             lock (proposer_lock)
             {
-                // setup proposer
-                n = id;
                 // TODO add capabilities
                 consensusRound = newConsensus;
                 proposeValue.SetItem(newConsensus, proposed_value);
@@ -91,10 +87,10 @@ namespace Boney
 
             valueProposedTrigger.Set();
 
-            Console.WriteLine("[P] Main thread paused, waiting for consensus.");
+            Console.WriteLine("[P-{0}] Main thread paused, waiting for consensus.", newConsensus);
             // wait for consensus to end
             consensusReachedTrigger.WaitOne();
-            Console.WriteLine("[P] Consensus reached.");
+            Console.WriteLine("[P-{0}] Main thread paused, Consensus reached.", newConsensus);
 
             // reset events (stop proposer)
             consensusReachedTrigger.Reset();
@@ -129,8 +125,12 @@ namespace Boney
                     Task<Promise>[] pending_requests = new Task<Promise>[clients.Length];
                     List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
+                    // Set proposal number
+                    int n = id + clients.Length * numberOfTries.GetItem(inst);
+                    numberOfTries[inst]++;
+
                     // Send prepare request to all acceptors
-                    Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
+                    Console.WriteLine("[P-{0}] Broadcasting: prepare(n={1})", inst, n);
                     for (int i = 0; i < clients.Length; i++)
                     {
                         PaxosService.PaxosServiceClient client = clients[i];
@@ -182,10 +182,7 @@ namespace Boney
                         }
                     }
 
-
-
-                    // TODO better leader selection policy
-                    if (end_proposal) { isPaxosLeaderTrigger.Reset();  continue; }
+                    if (end_proposal) { isPaxosLeaderTrigger.Reset(); continue; }
                     if (max_m > 0) { proposeValue.SetItem(inst, max_m_proposal); }
 
                     // Send accept requests to acceptors with proposed value
@@ -195,7 +192,7 @@ namespace Boney
                         N = n,
                         ProposedValue = proposeValue.GetItem(inst)
                     };
-                    Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposeValue.GetItem(inst));
+                    Console.WriteLine("[P-{0}] Broadcasting: accept(n={1}, val={2})", inst, n, proposeValue.GetItem(inst));
 
                     foreach (PaxosService.PaxosServiceClient client in clients)
                     {
@@ -204,8 +201,8 @@ namespace Boney
                         thread.Start();
                     }
 
-                    // TODO must create better leader selection policy
-                    isPaxosLeaderTrigger.Reset();
+                    // Give chance for consensus to be reached
+                    Thread.Sleep(timeslot_ms/4);
                 }
             }
         }
@@ -232,13 +229,31 @@ namespace Boney
 
                 // Write consensus result and unblock main thread
                 learned[commit.ConsensusInstance] = commit.AcceptedValue;
-                consensusReachedTrigger.Set();
+            }
+            lock (proposer_lock)
+            {
+                if (commit.ConsensusInstance == consensusRound)
+                    consensusReachedTrigger.Set();
             }
         }
 
         //Leader is assumed to be smallest non-suspected process id
         private void MagicFailDetector()
         {
+            int current_timeslot = 1;
+
+            while (true) {
+                // Set (or not) self to leader 
+                if (is_leader.GetItem(current_timeslot)) { isPaxosLeaderTrigger.Set(); }
+                else { isPaxosLeaderTrigger.Reset(); }
+
+                // Icrement timeslot counter
+                current_timeslot++;
+
+                // Sleep until next timeslot
+                Thread.Sleep(timeslot_ms);
+            }
+            /*
             //TODO - Maybe add a wait for when already leader?
 
             // Get suspected ids from "slot" info
@@ -251,6 +266,7 @@ namespace Boney
                 isPaxosLeaderTrigger.Set();
             else
                 Thread.Sleep(500);
+            */
         }
 
         //Prepare "schedule" for Fail Detector
@@ -258,13 +274,13 @@ namespace Boney
         {
             string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
             string config_path = Path.Combine(base_path, @"Common\config.txt");
+            List<int> otherBoneyIds = new();
+            Dictionary<int, List<int>> suspected = new();
 
             string[] lines = File.ReadAllLines(config_path);
             foreach (string line in lines)
             {
                 string[] tokens = line.Split(" ");
-                List<int> otherBoneyIds = new();
-                Dictionary<int, List<int>> suspected = new();
 
                 if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && Int32.Parse(tokens[1]) != id)
                     otherBoneyIds.Add(Int32.Parse(tokens[1]));
@@ -296,6 +312,16 @@ namespace Boney
                     suspected.Add(Int32.Parse(tokens[1]), susList);
                 }
             }
+
+            foreach (int timeslot in suspected.Keys)
+            {
+                int leader_id = otherBoneyIds.FindAll(
+                    (id) => !(suspected[timeslot].Contains(id))
+                ).Min();
+                is_leader.SetItem(timeslot, leader_id == id);
+            }
+
+
         }
 
     }

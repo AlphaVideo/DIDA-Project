@@ -48,8 +48,8 @@ internal class BankApp
         Console.WriteLine("Press enter to exit.");
 
         //Timeslots start with index 1!!
-        //for(int i = 1; i <= 1; i++)
-        //{
+        for(int i = 1; i <= 3; i++)
+        {
             //Assuming bank servers are running as processes 4,5 and 6
             //Asks for consensus on who's the leader with random bank server as invalue candidate
             Random rnd = new Random();
@@ -57,11 +57,11 @@ internal class BankApp
 
             foreach (ServerInfo boney in boneyServers)
             {
-                Thread thread = new Thread(() => requestConsensus(boney, 1, candidate));
+                Thread thread = new Thread(() => requestConsensus(boney, i, candidate));
                 thread.Start();
             }
-            //Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
-        //}
+            Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
+        }
 
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();

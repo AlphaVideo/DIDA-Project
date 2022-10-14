@@ -27,7 +27,7 @@ namespace Common
                 {
                     TResponse response = call(request);
 
-                    if (((IMessage)response).)
+                    //if (((IMessage)response).)
 
                     return response;
 
