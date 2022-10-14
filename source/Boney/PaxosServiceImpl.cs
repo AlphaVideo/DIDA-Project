@@ -13,21 +13,9 @@ namespace Boney
     internal class PaxosServiceImpl : PaxosService.PaxosServiceBase
     {   
 
-        enum PROMISE_STATUS
-        {
-            NOT_PROMISED,
-            PROMISED,
-            ACCEPTED
-        }
-
-        // Acceptor status for each consensus instance
-        private InfiniteList<PROMISE_STATUS> promise_statuses = new InfiniteList<PROMISE_STATUS>(PROMISE_STATUS.NOT_PROMISED);
-
-        // Promised generation numbers
-        private InfiniteList<int> promised_ids = new InfiniteList<int>(-1);
-
-        // Last value accepted and commited for each consensus instance
-        private InfiniteList<int> accepted_values = new InfiniteList<int>(-1);
+        // Read and write timestamps for the acceptor
+        private InfiniteList<int> read_timestamps = new InfiniteList<int>(0);
+        private InfiniteList<Tuple<int, int>> write_timestamps = new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(0, 0)); // (Item1, Item2) := (timestamp, value)
 
         // Paxos object
         private Paxos paxos;
@@ -42,23 +30,12 @@ namespace Boney
         {
             lock (this) 
             { 
-                int inst = prepare.ConsensusInstance;
-                PROMISE_STATUS status = promise_statuses.GetItem(inst);
-
-                // First proposal for this instance
-                if (status == PROMISE_STATUS.NOT_PROMISED)
-                {
-                    promised_ids.SetItem(inst, prepare.N);
-                    promise_statuses.SetItem(inst, PROMISE_STATUS.PROMISED);
-
-                    return Task.FromResult(new Promise
-                    {
-                        Status = Promise.Types.PROMISE_STATUS.First
-                    });
-                }
+                // Read and write timestamps for this consensus instance
+                int read_timestamp = read_timestamps.GetItem(prepare.ConsensusInstance);
+                Tuple<int, int> write_timestamp = write_timestamps.GetItem(prepare.ConsensusInstance);
 
                 // Ignore proposal
-                else if (prepare.N < promised_ids.GetItem(inst))
+                if (prepare.N < read_timestamp)
                 {
                     return Task.FromResult(new Promise
                     {
@@ -66,31 +43,28 @@ namespace Boney
                     });
                 }
 
-                // Later id but only promised was made
-                else if (status == PROMISE_STATUS.PROMISED)
+                // New read timestamp and no previously accepted value
+                else if (read_timestamp < prepare.N && write_timestamp.Item1 == 0)
                 {
-                    int prev_id = promised_ids.GetItem(inst);
-                    promised_ids.SetItem(inst, prepare.N);
+                    read_timestamps.SetItem(prepare.ConsensusInstance, prepare.N);
+
                     return Task.FromResult(new Promise
                     {
-                        Status = Promise.Types.PROMISE_STATUS.PrevPromised,
-                        M = prev_id
+                        Status = Promise.Types.PROMISE_STATUS.First
                     });
                 }
 
-                // Later id and already accepted value
+                // New read timestamp and had previously accepted a value
                 else
                 {
-                    int prev_id = promised_ids.GetItem(inst);
-                    promised_ids.SetItem(inst, prepare.N);
-                    // TODO PROMISED?
-                    status = PROMISE_STATUS.PROMISED;
+                    int prev_timestamp = read_timestamp;
+                    read_timestamps.SetItem(prepare.ConsensusInstance, prepare.N);
 
                     return Task.FromResult(new Promise
                     {
                         Status = Promise.Types.PROMISE_STATUS.PrevAccepted,
-                        M = prev_id,
-                        PrevProposedValue = accepted_values.GetItem(inst)
+                        M = prev_timestamp,
+                        PrevProposedValue = write_timestamp.Item2
                     });
                 }
             }
@@ -100,15 +74,16 @@ namespace Boney
         {
             lock (this)
             {
-                int inst = accept.ConsensusInstance;
-                if (promise_statuses.GetItem(inst) == PROMISE_STATUS.NOT_PROMISED || accept.N >= promised_ids.GetItem(inst))
+                if (accept.N >= read_timestamps.GetItem(accept.ConsensusInstance))
                 {
-                    accepted_values.SetItem(inst, accept.ProposedValue);
-                    promise_statuses.SetItem(inst, PROMISE_STATUS.ACCEPTED);
+                    // Set read and write timestamps to new value
+                    read_timestamps.SetItem(accept.ConsensusInstance, accept.N);
+                    write_timestamps.SetItem(accept.ConsensusInstance, new Tuple<int, int>(accept.N, accept.ProposedValue));
 
+                    // Create and broadcast CommitRequest to all learners
                     CommitRequest commit = new CommitRequest
                     {
-                        ConsensusInstance = inst,
+                        ConsensusInstance = accept.ConsensusInstance,
                         CommitGeneration = accept.N,
                         AcceptorId = paxos.Id,
                         AcceptedValue = accept.ProposedValue
