@@ -17,16 +17,14 @@ namespace Boney
         int id;
         // Proposal number
         int n;
-        //Fail detection list: SlotID -> Sus IDs 
-        Dictionary<int, List<int>> suspected = new();
-        List<int> otherBoneyIds = new();
-
-        // slot id
-        int slot_id = 1;
 
         // Addresses of learners and acceptor
         private readonly List<ServerInfo> acceptors;
         private readonly List<ServerInfo> learners;
+
+        // Magic Fail Detector Variables
+        int timeslot_ms;
+        List<bool> is_leader = new();
 
 
         // Proposer lock
@@ -79,7 +77,6 @@ namespace Boney
         //Consensus number = bank timeslot slot id
         public int Consensus(int newConsensus, int proposed_value)
         {
-            slot_id = newConsensus;
             // Check if the value has been learned
             if (learned.ContainsKey(newConsensus)) { return learned[newConsensus]; }
 
@@ -243,13 +240,9 @@ namespace Boney
         private void MagicFailDetector()
         {
             //TODO - Maybe add a wait for when already leader?
-            
-            List<int> possibleLeaders = new List<int>(otherBoneyIds);
 
-            foreach (int suspect in suspected[slot_id]) //Get suspected ids from "slot" info
-            {
-                possibleLeaders.Remove(suspect);
-            }
+            // Get suspected ids from "slot" info
+            List<int> possibleLeaders = otherBoneyIds.FindAll((boney) => !(suspected[slot_id].Contains(boney)));
 
             int smallestOther = possibleLeaders.Min();
 
@@ -270,11 +263,16 @@ namespace Boney
             foreach (string line in lines)
             {
                 string[] tokens = line.Split(" ");
+                List<int> otherBoneyIds = new();
+                Dictionary<int, List<int>> suspected = new();
 
                 if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && Int32.Parse(tokens[1]) != id)
                     otherBoneyIds.Add(Int32.Parse(tokens[1]));
 
-                if (tokens.Length > 1 && tokens[0] == "F")
+                else if (tokens.Length == 2 && tokens[0] == "D")
+                    timeslot_ms = Int32.Parse(tokens[1]);
+
+                else if (tokens.Length > 1 && tokens[0] == "F")
                 {
                     var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
                     List<int> susList = new(); //Sorting key is the same as value
