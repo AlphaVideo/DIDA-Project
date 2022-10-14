@@ -31,7 +31,7 @@ namespace Boney
         // Proposer Variables
         private Thread proposer;
         private int proposer_consensus;
-        private InfiniteList<int> proposed = new InfiniteList<int>(-1);
+        private InfiniteList<int> proposed = new InfiniteList<int>(0);
 
         // Paxos leader detection
         private Thread fail_detector;
@@ -45,7 +45,7 @@ namespace Boney
         private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
 
         // Values decided in each consensus
-        private InfiniteList<int> learned  = new InfiniteList<int>(-1);
+        private InfiniteList<int> learned  = new InfiniteList<int>(0);
 
 
         public Paxos(int id, List<ServerInfo> paxos_servers)
@@ -56,7 +56,7 @@ namespace Boney
             acceptors = paxos_servers;
             learners = paxos_servers;
 
-            commits = new InfiniteList<InfiniteList<Tuple<int, int>>>(new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(-1, -1)));
+            commits = new InfiniteList<InfiniteList<Tuple<int, int>>>(new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(0, 0)));
 
             readConfig();
 
@@ -151,7 +151,7 @@ namespace Boney
                 }
 
                 // Process promises
-                int max_m = -1;
+                int max_m = 0;
                 int max_m_proposal = 0;
                 bool end_proposal = false;
                 Console.WriteLine("Completed requests: " + completed_requests.Count);
