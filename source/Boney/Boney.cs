@@ -59,7 +59,7 @@ internal class Program
         foreach (string line in lines)
         {
             string[] tokens = line.Split(" ");
-            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && tokens[1] != processId.ToString())
+            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
                 boneyServers.Add(new ServerInfo(tokens[3]));
 
             if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
