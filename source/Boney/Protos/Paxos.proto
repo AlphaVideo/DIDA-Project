@@ -23,7 +23,7 @@ message Promise {
 	}
 
 	PROMISE_STATUS status = 1;
-	int32 m = 2;
+	int32 m = 2; // n of previous proposal
 	int32 prev_proposed_value = 3;
 }
 

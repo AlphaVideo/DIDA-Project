@@ -33,24 +33,24 @@ namespace Boney
         private readonly object proposer_lock = new object();
         // Proposer Variables
         private Thread proposer;
-        private int proposer_consensus;
-        private InfiniteList<int> proposed = new InfiniteList<int>(0);
+        private int consensusRound;
+        private InfiniteList<int> proposeValue = new InfiniteList<int>(0);
 
         // Paxos leader detection
         private Thread fail_detector;
-        private ManualResetEvent paxos_leader = new ManualResetEvent(false);
+        private ManualResetEvent isPaxosLeaderTrigger = new ManualResetEvent(false);
 
         // A value has been proposed by a bank for concsensus
-        private ManualResetEvent value_proposed = new ManualResetEvent(false);
+        private ManualResetEvent valueProposedTrigger = new ManualResetEvent(false);
 
         // Learner lock
         private readonly object learner_lock = new object();
         // Learners Variables
-        private ManualResetEvent consensus_reached = new ManualResetEvent(false);
+        private ManualResetEvent consensusReachedTrigger = new ManualResetEvent(false);
         private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
 
-        // Values decided in each consensus
-        private InfiniteList<int> learned  = new InfiniteList<int>(0);
+        // Values decided in each consensus (key=round, value=consensusResult)
+        private Dictionary<int, int> learned  = new();
 
 
         public Paxos(int id, List<ServerInfo> paxos_servers)
@@ -77,46 +77,38 @@ namespace Boney
         public List<ServerInfo> Learners => learners;
 
         //Consensus number = bank timeslot slot id
-        public int Consensus(int consensus_number, int proposed_value)
+        public int Consensus(int newConsensus, int proposed_value)
         {
-            slot_id = consensus_number;
+            slot_id = newConsensus;
             // Check if the value has been learned
-            if (consensus_number < learned.Count) { return learned[consensus_number]; }
-
-            // TODO [when a consensus is asked for a timestamp in the future] is this case needed?
-            //if (consensus_number > learned.Count) { return -1; }
+            if (newConsensus < learned.Count) { return learned[newConsensus]; }
 
             lock (proposer_lock)
             {
                 // setup proposer
                 n = id;
                 // TODO add capabilities
-                proposer_consensus = consensus_number;
-                proposed.SetItem(consensus_number, proposed_value);
+                consensusRound = newConsensus;
+                proposeValue.SetItem(newConsensus, proposed_value);
             }
 
-            value_proposed.Set();
+            valueProposedTrigger.Set();
 
             Console.WriteLine("[P] Main thread paused, waiting for consensus.");
             // wait for consensus to end
-            consensus_reached.WaitOne();
+            consensusReachedTrigger.WaitOne();
             Console.WriteLine("[P] Consensus reached.");
 
             // reset events (stop proposer)
-            consensus_reached.Reset();
-            value_proposed.Reset();
+            consensusReachedTrigger.Reset();
+            valueProposedTrigger.Reset();
 
-            foreach (int i in learned)
-            {
-                Console.Write("{0}, ", i);
-            }
-
-            return learned[consensus_number];
+            return learned[newConsensus];
         }
 
         private void Proposer()
         {
-            ManualResetEvent[] can_propose = { value_proposed, paxos_leader };
+            ManualResetEvent[] can_propose = { valueProposedTrigger, isPaxosLeaderTrigger };
             PaxosService.PaxosServiceClient[] clients;
 
             lock (acceptors)
@@ -136,7 +128,7 @@ namespace Boney
 
                 lock (proposer_lock)
                 {
-                    int inst = proposer_consensus;
+                    int inst = consensusRound;
                     Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
                     List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
@@ -144,26 +136,25 @@ namespace Boney
                     Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
                     for (int i = 0; i < clients.Length; i++)
                     {
-                        Console.WriteLine("Paxos LINE 131");
                         // TODO perfect channel
                         pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { N = n })); 
                         pending_requests[i].Start();
                     }
 
-                    Console.WriteLine("Paxos LINE 137");
                     // Wait for a majority of answers
-                    while (pending_requests.Length > completed_requests.Count)
+                    //while (pending_requests.Length > completed_requests.Count)
+                    for (int k = 0; k < 1 + acceptors.Count / 2; k++)
                     {
-                        int i_completed = Task.WaitAny(pending_requests);
+                        int completedIndex = Task.WaitAny(pending_requests);
 
-                        completed_requests.Add(pending_requests[i_completed]);
+                        completed_requests.Add(pending_requests[completedIndex]);
 
-                        for (int i = 0; i < pending_requests.Length-1; i++)
-                        {
-                            if (i >= i_completed) { pending_requests[i] = pending_requests[i + 1]; }
-                        }
+                        //for (int i = 0; i < pending_requests.Length-1; i++)
+                        //{
+                        //    if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
+                        //}
 
-                        Array.Resize(ref pending_requests, pending_requests.Length-1);
+                        //Array.Resize(ref pending_requests, pending_requests.Length-1);
                     }
 
                     // Process promises
@@ -193,17 +184,17 @@ namespace Boney
                     }
 
                     // TODO better leader selection policy
-                    if (end_proposal) { paxos_leader.Reset();  continue; }
-                    if (max_m > 0) { proposed.SetItem(inst, max_m_proposal); }
+                    if (end_proposal) { isPaxosLeaderTrigger.Reset();  continue; }
+                    if (max_m > 0) { proposeValue.SetItem(inst, max_m_proposal); }
 
                     // Send accept requests to acceptors with proposed value
                     Accept request = new Accept
                     {
                         ConsensusInstance = inst,
                         N = n,
-                        ProposedValue = proposed.GetItem(inst)
+                        ProposedValue = proposeValue.GetItem(inst)
                     };
-                    Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposed.GetItem(inst));
+                    Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposeValue.GetItem(inst));
 
                     foreach (PaxosService.PaxosServiceClient client in clients)
                     {
@@ -213,7 +204,7 @@ namespace Boney
                     }
 
                     // TODO must create better leader selection policy
-                    paxos_leader.Reset();
+                    isPaxosLeaderTrigger.Reset();
                 }
             }
         }
@@ -239,8 +230,8 @@ namespace Boney
                 if (gen_count < number_of_acceptors / 2) { return; }
 
                 // Write consensus result and unblock main thread
-                learned.SetItem(commit.ConsensusInstance, commit.AcceptedValue);
-                consensus_reached.Set();
+                learned[commit.ConsensusInstance] = commit.AcceptedValue;
+                consensusReachedTrigger.Set();
             }
         }
 
@@ -260,7 +251,7 @@ namespace Boney
 
             //If I'm the smallest "working" id, I'm the leader
             if (id < smallestOther)
-                paxos_leader.Set();
+                isPaxosLeaderTrigger.Set();
             else
                 Thread.Sleep(500);
         }
