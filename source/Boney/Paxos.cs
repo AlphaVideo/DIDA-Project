@@ -81,7 +81,7 @@ namespace Boney
         {
             slot_id = newConsensus;
             // Check if the value has been learned
-            if (newConsensus < learned.Count) { return learned[newConsensus]; }
+            if (learned.ContainsKey(newConsensus)) { return learned[newConsensus]; }
 
             lock (proposer_lock)
             {
