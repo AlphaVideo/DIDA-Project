@@ -94,10 +94,10 @@ namespace Boney
 
             valueProposedTrigger.Set();
 
-            Console.WriteLine("[P] Main thread paused, waiting for consensus.");
+            Console.WriteLine("[Paxos ] Main thread paused, waiting for consensus.");
             // wait for consensus to end
             consensusReachedTrigger.WaitOne();
-            Console.WriteLine("[P] Consensus reached.");
+            Console.WriteLine("[Paxos ] Consensus reached.");
 
             // reset events (stop proposer)
             consensusReachedTrigger.Reset();
@@ -133,7 +133,7 @@ namespace Boney
                     List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
                     // Send prepare request to all acceptors
-                    Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
+                    Console.WriteLine("[Propsr] Broadcasting: prepare(n={0})", n);
                     for (int i = 0; i < clients.Length; i++)
                     {
                         PaxosService.PaxosServiceClient client = clients[i];
@@ -198,7 +198,7 @@ namespace Boney
                         N = n,
                         ProposedValue = proposeValue.GetItem(inst)
                     };
-                    Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposeValue.GetItem(inst));
+                    Console.WriteLine("[Propsr] Broadcasting: accept(n={0}, val={1})", n, proposeValue.GetItem(inst));
 
                     foreach (PaxosService.PaxosServiceClient client in clients)
                     {

@@ -20,9 +20,9 @@ namespace Boney
             CompareSwapReply reply = new();
 
             // TODO frozen state
-            Console.WriteLine("[B] Received CaS for slot {0} with value {1}", request.Slot, request.Invalue);
+            Console.WriteLine("[Boney ] Received CaS for slot {0} with value {1}", request.Slot, request.Invalue);
             val = _paxos.Consensus(request.Slot, request.Invalue);
-            Console.WriteLine("[B] Reached consensus with value {0}", val);
+            Console.WriteLine("[Boney ] Reached consensus with value {0}", val);
 
             reply.Outvalue = val;
 

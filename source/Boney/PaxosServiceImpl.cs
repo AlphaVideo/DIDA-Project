@@ -35,7 +35,7 @@ namespace Boney
                 int read_timestamp = read_timestamps.GetItem(prepare.ConsensusInstance);
                 Tuple<int, int> write_timestamp = write_timestamps.GetItem(prepare.ConsensusInstance);
 
-                Console.WriteLine("PaxosService LINE 37");
+                Console.WriteLine("[PaxImp] Received prepare(n={0})", prepare.N);
                 // Ignore proposal
                 if (prepare.N < read_timestamp)
                 {
@@ -48,7 +48,6 @@ namespace Boney
                 // New read timestamp and no previously accepted value
                 else if (read_timestamp < prepare.N && write_timestamp.Item1 == 0)
                 {
-                    Console.WriteLine("PaxosService LINE 50");
                     read_timestamps.SetItem(prepare.ConsensusInstance, prepare.N);
 
                     return Task.FromResult(new Promise
@@ -75,6 +74,8 @@ namespace Boney
 
         public override Task<EmptyReply> PhaseTwo(Accept accept, ServerCallContext context)
         {
+            Console.WriteLine("[PaxImp] Received accept(n={0}, val={1})", accept.N, accept.ProposedValue);
+
             lock (acceptor_lock)
             {
                 if (accept.N >= read_timestamps.GetItem(accept.ConsensusInstance))
