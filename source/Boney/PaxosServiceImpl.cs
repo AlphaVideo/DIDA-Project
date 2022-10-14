@@ -11,8 +11,9 @@ using System.Threading.Tasks;
 namespace Boney
 {
     internal class PaxosServiceImpl : PaxosService.PaxosServiceBase
-    {   
-
+    {
+        // Acceptor lock
+        private readonly object acceptor_lock = new object();
         // Read and write timestamps for the acceptor
         private InfiniteList<int> read_timestamps = new InfiniteList<int>(0);
         private InfiniteList<Tuple<int, int>> write_timestamps = new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(0, 0)); // (Item1, Item2) := (timestamp, value)
@@ -28,14 +29,13 @@ namespace Boney
 
         public override Task<Promise> PhaseOne(Prepare prepare, ServerCallContext context)
         {
-            lock (this) 
-            { 
+            lock (acceptor_lock)
+            {
                 // Read and write timestamps for this consensus instance
                 int read_timestamp = read_timestamps.GetItem(prepare.ConsensusInstance);
                 Tuple<int, int> write_timestamp = write_timestamps.GetItem(prepare.ConsensusInstance);
 
-                Console.WriteLine("PaxosService LINE 48");
-                Console.WriteLine("PaxosService LINE 52");
+                Console.WriteLine("PaxosService LINE 37");
                 // Ignore proposal
                 if (prepare.N < read_timestamp)
                 {
@@ -48,6 +48,7 @@ namespace Boney
                 // New read timestamp and no previously accepted value
                 else if (read_timestamp < prepare.N && write_timestamp.Item1 == 0)
                 {
+                    Console.WriteLine("PaxosService LINE 50");
                     read_timestamps.SetItem(prepare.ConsensusInstance, prepare.N);
 
                     return Task.FromResult(new Promise
@@ -74,7 +75,7 @@ namespace Boney
 
         public override Task<EmptyReply> PhaseTwo(Accept accept, ServerCallContext context)
         {
-            lock (this)
+            lock (acceptor_lock)
             {
                 if (accept.N >= read_timestamps.GetItem(accept.ConsensusInstance))
                 {

@@ -28,6 +28,9 @@ namespace Boney
         private readonly List<ServerInfo> acceptors;
         private readonly List<ServerInfo> learners;
 
+
+        // Proposer lock
+        private readonly object proposer_lock = new object();
         // Proposer Variables
         private Thread proposer;
         private int proposer_consensus;
@@ -40,6 +43,8 @@ namespace Boney
         // A value has been proposed by a bank for concsensus
         private ManualResetEvent value_proposed = new ManualResetEvent(false);
 
+        // Learner lock
+        private readonly object learner_lock = new object();
         // Learners Variables
         private ManualResetEvent consensus_reached = new ManualResetEvent(false);
         private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
@@ -81,11 +86,15 @@ namespace Boney
             // TODO [when a consensus is asked for a timestamp in the future] is this case needed?
             //if (consensus_number > learned.Count) { return -1; }
 
-            // setup proposer
-            n = id;
-            // TODO add capabilities
-            proposer_consensus = consensus_number;
-            proposed.SetItem(consensus_number, proposed_value);
+            lock (proposer_lock)
+            {
+                // setup proposer
+                n = id;
+                // TODO add capabilities
+                proposer_consensus = consensus_number;
+                proposed.SetItem(consensus_number, proposed_value);
+            }
+
             value_proposed.Set();
 
             Console.WriteLine("[P] Main thread paused, waiting for consensus.");
@@ -108,11 +117,16 @@ namespace Boney
         private void Proposer()
         {
             ManualResetEvent[] can_propose = { value_proposed, paxos_leader };
-            PaxosService.PaxosServiceClient[] clients = new PaxosService.PaxosServiceClient[acceptors.Count];
+            PaxosService.PaxosServiceClient[] clients;
 
-            for (int i = 0; i < acceptors.Count; i++)
+            lock (acceptors)
             {
-                clients[i] = new PaxosService.PaxosServiceClient(acceptors[i].Channel);
+                clients = new PaxosService.PaxosServiceClient[acceptors.Count];
+
+                for (int i = 0; i < acceptors.Count; i++)
+                {
+                    clients[i] = new PaxosService.PaxosServiceClient(acceptors[i].Channel);
+                }
             }
 
             while (true)
@@ -120,90 +134,97 @@ namespace Boney
                 // Wait for permission to propose
                 WaitHandle.WaitAll(can_propose);
 
-                int inst = proposer_consensus;
-                Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
-                List<Task<Promise>> completed_requests = new List<Task<Promise>>();
-
-                // Send prepare request to all acceptors
-                Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
-                for (int i = 0; i < acceptors.Count; i++)
+                lock (proposer_lock)
                 {
-                    Console.WriteLine("Paxos LINE 131");
-                    // TODO perfect channel
-                    pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { N = n })); 
-                    pending_requests[i].Start();
-                }
+                    int inst = proposer_consensus;
+                    Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
+                    List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
-                Console.WriteLine("Paxos LINE 137");
-                // Wait for a majority of answers
-                while (pending_requests.Length > completed_requests.Count)
-                {
-                    int i_completed = Task.WaitAny(pending_requests);
-
-                    completed_requests.Add(pending_requests[i_completed]);
-
-                    for (int i = 0; i < pending_requests.Length-1; i++)
+                    // Send prepare request to all acceptors
+                    Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
+                    for (int i = 0; i < clients.Length; i++)
                     {
-                        if (i >= i_completed) { pending_requests[i] = pending_requests[i + 1]; }
+                        Console.WriteLine("Paxos LINE 131");
+                        // TODO perfect channel
+                        pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { N = n })); 
+                        pending_requests[i].Start();
                     }
 
-                    Array.Resize(ref pending_requests, pending_requests.Length-1);
-                }
-
-                // Process promises
-                int max_m = 0;
-                int max_m_proposal = 0;
-                bool end_proposal = false;
-                Console.WriteLine("Completed requests: " + completed_requests.Count);
-                for (int i = 0; i < completed_requests.Count; i++)
-                {
-                    var task = completed_requests[i];
-                    var reply = task.Result;
-
-
-                    switch (reply.Status)
+                    Console.WriteLine("Paxos LINE 137");
+                    // Wait for a majority of answers
+                    while (pending_requests.Length > completed_requests.Count)
                     {
-                        case Promise.Types.PROMISE_STATUS.Nack:
-                            end_proposal = true;
-                            break;
-                        case Promise.Types.PROMISE_STATUS.PrevAccepted:
-                            if (reply.M > max_m)
-                            {
-                                max_m = reply.M; 
-                                max_m_proposal = reply.PrevProposedValue;
-                            }
-                            break;
+                        int i_completed = Task.WaitAny(pending_requests);
+
+                        completed_requests.Add(pending_requests[i_completed]);
+
+                        for (int i = 0; i < pending_requests.Length-1; i++)
+                        {
+                            if (i >= i_completed) { pending_requests[i] = pending_requests[i + 1]; }
+                        }
+
+                        Array.Resize(ref pending_requests, pending_requests.Length-1);
                     }
+
+                    // Process promises
+                    int max_m = 0;
+                    int max_m_proposal = 0;
+                    bool end_proposal = false;
+                    Console.WriteLine("Completed requests: " + completed_requests.Count);
+                    for (int i = 0; i < completed_requests.Count; i++)
+                    {
+                        var task = completed_requests[i];
+                        var reply = task.Result;
+
+
+                        switch (reply.Status)
+                        {
+                            case Promise.Types.PROMISE_STATUS.Nack:
+                                end_proposal = true;
+                                break;
+                            case Promise.Types.PROMISE_STATUS.PrevAccepted:
+                                if (reply.M > max_m)
+                                {
+                                    max_m = reply.M; 
+                                    max_m_proposal = reply.PrevProposedValue;
+                                }
+                                break;
+                        }
+                    }
+
+                    // TODO better leader selection policy
+                    if (end_proposal) { paxos_leader.Reset();  continue; }
+                    if (max_m > 0) { proposed.SetItem(inst, max_m_proposal); }
+
+                    // Send accept requests to acceptors with proposed value
+                    Accept request = new Accept
+                    {
+                        ConsensusInstance = inst,
+                        N = n,
+                        ProposedValue = proposed.GetItem(inst)
+                    };
+                    Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposed.GetItem(inst));
+
+                    foreach (PaxosService.PaxosServiceClient client in clients)
+                    {
+                        // TODO perfect channel
+                        Thread thread = new Thread(() => client.PhaseTwo(request));
+                        thread.Start();
+                    }
+
+                    // TODO must create better leader selection policy
+                    paxos_leader.Reset();
                 }
-
-                // TODO better leader selection policy
-                if (end_proposal) { paxos_leader.Reset();  continue; }
-                if (max_m > 0) { proposed.SetItem(inst, max_m_proposal); }
-
-                // Send accept requests to acceptors with proposed value
-                Accept request = new Accept
-                {
-                    ConsensusInstance = inst,
-                    N = n,
-                    ProposedValue = proposed.GetItem(inst)
-                };
-                Console.WriteLine("[P] Broadcasting: accept(n={0}, val={1})", n, proposed.GetItem(inst));
-
-                foreach (PaxosService.PaxosServiceClient client in clients)
-                {
-                    // TODO perfect channel
-                    Thread thread = new Thread(() => client.PhaseTwo(request));
-                    thread.Start();
-                }
-
-                // TODO must create better leader selection policy
-                paxos_leader.Reset();
             }
         }
 
         public void Learner(CommitRequest commit)
         {
-            lock (this)
+
+            int number_of_acceptors;
+            lock (acceptors) { number_of_acceptors = acceptors.Count; }
+
+            lock (learner_lock)
             {
 
                 int acceptor_i = commit.AcceptorId - 1;
@@ -215,7 +236,7 @@ namespace Boney
 
                 // Check if a majority has been achieved
                 int gen_count = current_commits.FindAll((tuple) => tuple.Item1 == commit.CommitGeneration).Count();
-                if (gen_count < acceptors.Count / 2) { return; }
+                if (gen_count < number_of_acceptors / 2) { return; }
 
                 // Write consensus result and unblock main thread
                 learned.SetItem(commit.ConsensusInstance, commit.AcceptedValue);
