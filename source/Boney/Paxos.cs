@@ -157,6 +157,7 @@ namespace Boney
                         int i_completed = Task.WaitAny(pending_requests);
 
                         completed_requests.Add(pending_requests[i_completed]);
+                        Console.WriteLine("Completed_Requestss: {0}", completed_requests);
 
                         for (int i = 0; i < pending_requests.Length-1; i++)
                         {
