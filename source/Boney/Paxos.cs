@@ -129,7 +129,7 @@ namespace Boney
                 lock (proposer_lock)
                 {
                     int inst = consensusRound;
-                    Task<Promise>[] pending_requests = new Task<Promise>[acceptors.Count];
+                    Task<Promise>[] pending_requests = new Task<Promise>[clients.Length];
                     List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
                     // Send prepare request to all acceptors
@@ -137,24 +137,26 @@ namespace Boney
                     for (int i = 0; i < clients.Length; i++)
                     {
                         // TODO perfect channel
-                        pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { N = n })); 
+                        pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { 
+                            ConsensusInstance = inst,
+                            N = n 
+                        })); 
                         pending_requests[i].Start();
                     }
 
                     // Wait for a majority of answers
-                    //while (pending_requests.Length > completed_requests.Count)
-                    for (int k = 0; k < 1 + acceptors.Count / 2; k++)
+                    while (pending_requests.Length > completed_requests.Count)
                     {
                         int completedIndex = Task.WaitAny(pending_requests);
 
                         completed_requests.Add(pending_requests[completedIndex]);
 
-                        //for (int i = 0; i < pending_requests.Length-1; i++)
-                        //{
-                        //    if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
-                        //}
+                        for (int i = 0; i < pending_requests.Length-1; i++)
+                        {
+                            if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
+                        }
 
-                        //Array.Resize(ref pending_requests, pending_requests.Length-1);
+                        Array.Resize(ref pending_requests, pending_requests.Length-1);
                     }
 
                     // Process promises

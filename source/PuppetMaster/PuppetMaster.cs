@@ -35,7 +35,7 @@ internal class PuppetMaster
                 {
                     case "client":
                         procInfo = new ProcessStartInfo(customer_path, tokens[1]);
-                        //procInfo.UseShellExecute = true;
+                        procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating customer subprocess with id " + tokens[1]);
                         Process.Start(procInfo);
@@ -43,7 +43,7 @@ internal class PuppetMaster
 
                     case "bank":
                         procInfo = new ProcessStartInfo(bank_path, tokens[1]);
-                        //procInfo.UseShellExecute = true;
+                        procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating bank subprocess with id " + tokens[1]);
                         Process.Start(procInfo);
@@ -51,7 +51,7 @@ internal class PuppetMaster
 
                     case "boney":
                         procInfo = new ProcessStartInfo(boney_path, tokens[1]);
-                        //procInfo.UseShellExecute = true;
+                        procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating boney subprocess with id " + tokens[1]);
                         Process.Start(procInfo);
