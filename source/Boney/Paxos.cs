@@ -136,12 +136,13 @@ namespace Boney
                     Console.WriteLine("[P] Broadcasting: prepare(n={0})", n);
                     for (int i = 0; i < clients.Length; i++)
                     {
+                        PaxosService.PaxosServiceClient client = clients[i];
                         // TODO perfect channel
-                        pending_requests[i] = new Task<Promise>(() => clients[i].PhaseOne(new Prepare { 
+                        pending_requests[i] = Task.Factory.StartNew<Promise>(() => client.PhaseOne(new Prepare
+                        {
                             ConsensusInstance = inst,
-                            N = n 
-                        })); 
-                        pending_requests[i].Start();
+                            N = n
+                        }));
                     }
 
                     // Wait for a majority of answers
@@ -163,33 +164,25 @@ namespace Boney
                     int max_m = 0;
                     int max_m_proposal = 0;
                     bool end_proposal = false;
-                    try
+                    for (int i = 0; i < completed_requests.Count; i++)
                     {
-                        for (int i = 0; i < completed_requests.Count; i++)
+                        var task = completed_requests[i];
+                        var reply = task.Result;
+
+
+                        switch (reply.Status)
                         {
-                            var task = completed_requests[i];
-                            var reply = task.Result;
-
-
-                            switch (reply.Status)
-                            {
-                                case Promise.Types.PROMISE_STATUS.Nack:
-                                    end_proposal = true;
-                                    break;
-                                case Promise.Types.PROMISE_STATUS.PrevAccepted:
-                                    if (reply.M > max_m)
-                                    {
-                                        max_m = reply.M; 
-                                        max_m_proposal = reply.PrevProposedValue;
-                                    }
-                                    break;
-                            }
+                            case Promise.Types.PROMISE_STATUS.Nack:
+                                end_proposal = true;
+                                break;
+                            case Promise.Types.PROMISE_STATUS.PrevAccepted:
+                                if (reply.M > max_m)
+                                {
+                                    max_m = reply.M; 
+                                    max_m_proposal = reply.PrevProposedValue;
+                                }
+                                break;
                         }
-                    } catch(Exception e)
-                    {
-                        Console.WriteLine("EXCEPTION CAUGHT");
-                        Console.WriteLine(e);
-                        Console.ReadKey();
                     }
 
 
