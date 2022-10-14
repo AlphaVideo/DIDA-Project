@@ -152,12 +152,11 @@ namespace Boney
 
                     Console.WriteLine("Paxos LINE 137");
                     // Wait for a majority of answers
-                    while (pending_requests.Length > completed_requests.Count)
+                    while (pending_requests.Length >= completed_requests.Count)
                     {
                         int i_completed = Task.WaitAny(pending_requests);
 
                         completed_requests.Add(pending_requests[i_completed]);
-                        Console.WriteLine("Completed_Requestss: {0}", completed_requests);
 
                         for (int i = 0; i < pending_requests.Length-1; i++)
                         {
@@ -171,27 +170,35 @@ namespace Boney
                     int max_m = 0;
                     int max_m_proposal = 0;
                     bool end_proposal = false;
-                    Console.WriteLine("Completed requests: " + completed_requests.Count);
-                    for (int i = 0; i < completed_requests.Count; i++)
+                    try
                     {
-                        var task = completed_requests[i];
-                        var reply = task.Result;
-
-
-                        switch (reply.Status)
+                        for (int i = 0; i < completed_requests.Count; i++)
                         {
-                            case Promise.Types.PROMISE_STATUS.Nack:
-                                end_proposal = true;
-                                break;
-                            case Promise.Types.PROMISE_STATUS.PrevAccepted:
-                                if (reply.M > max_m)
-                                {
-                                    max_m = reply.M; 
-                                    max_m_proposal = reply.PrevProposedValue;
-                                }
-                                break;
+                            var task = completed_requests[i];
+                            var reply = task.Result;
+
+
+                            switch (reply.Status)
+                            {
+                                case Promise.Types.PROMISE_STATUS.Nack:
+                                    end_proposal = true;
+                                    break;
+                                case Promise.Types.PROMISE_STATUS.PrevAccepted:
+                                    if (reply.M > max_m)
+                                    {
+                                        max_m = reply.M; 
+                                        max_m_proposal = reply.PrevProposedValue;
+                                    }
+                                    break;
+                            }
                         }
+                    } catch(Exception e)
+                    {
+                        Console.WriteLine(e);
+                        Console.ReadKey();
                     }
+
+
 
                     // TODO better leader selection policy
                     if (end_proposal) { paxos_leader.Reset();  continue; }
