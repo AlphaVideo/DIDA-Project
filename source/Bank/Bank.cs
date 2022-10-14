@@ -54,10 +54,11 @@ internal class BankApp
             //Asks for consensus on who's the leader with random bank server as invalue candidate
             Random rnd = new Random();
             int candidate = rnd.Next(4, 7);
+            int aux = i;
 
             foreach (ServerInfo boney in boneyServers)
             {
-                Thread thread = new Thread(() => requestConsensus(boney, i, candidate));
+                Thread thread = new Thread(() => requestConsensus(boney, aux, candidate));
                 thread.Start();
             }
             Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
