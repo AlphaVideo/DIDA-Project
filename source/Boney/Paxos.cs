@@ -90,7 +90,7 @@ namespace Boney
             Console.WriteLine("[P-{0}] Main thread paused, waiting for consensus.", newConsensus);
             // wait for consensus to end
             consensusReachedTrigger.WaitOne();
-            Console.WriteLine("[P-{0}] Main thread paused, Consensus reached.", newConsensus);
+            Console.WriteLine("[P-{0}] Main thread resumed, consensus reached.", newConsensus);
 
             // reset events (stop proposer)
             consensusReachedTrigger.Reset();

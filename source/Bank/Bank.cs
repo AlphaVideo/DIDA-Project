@@ -28,7 +28,7 @@ internal class BankApp
 
         processId = int.Parse(args[0]);
 
-        Console.SetWindowSize(70, 20);
+        Console.SetWindowSize(60, 20);
         Console.WriteLine("BANK process started with id " + processId);
 
         readConfig();
@@ -45,7 +45,6 @@ internal class BankApp
         server.Start();
 
         Console.WriteLine("Bank server listening on port " + serverPort);
-        Console.WriteLine("Press enter to exit.");
 
         //Timeslots start with index 1!!
         for(int i = 1; i <= 3; i++)
@@ -78,7 +77,7 @@ internal class BankApp
             var request = new CompareSwapRequest { Slot = slot, Invalue = value };
             var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
             var reply = boneyClient.CompareAndSwap(request);
-            Console.WriteLine("[{0}] Consensus: server {1} is primary for slot {2}.",
+            Console.WriteLine("[{0}] Server {1} is primary for slot {2}.",
                 boney.Address, reply.Outvalue, slot); // TODO in real system get real timestamp instead of `i`
         }
         catch (Grpc.Core.RpcException) // Server down (different from frozen)
