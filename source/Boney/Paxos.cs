@@ -14,19 +14,15 @@ namespace Boney
     internal class Paxos
     {
         // Server id
-        int id;
-        // Proposal number
-        int n;
-        //Fail detection list: SlotID -> Sus IDs 
-        Dictionary<int, List<int>> suspected = new();
-        List<int> otherBoneyIds = new();
-
-        // slot id
-        int slot_id = 1;
+        readonly int id;
 
         // Addresses of learners and acceptor
         private readonly List<ServerInfo> acceptors;
         private readonly List<ServerInfo> learners;
+
+        // Magic Fail Detector Variables
+        int timeslot_ms;
+        InfiniteList<bool> is_leader = new(true);
 
 
         // Proposer lock
@@ -34,6 +30,7 @@ namespace Boney
         // Proposer Variables
         private Thread proposer;
         private int consensusRound;
+        private InfiniteList<int> numberOfTries = new InfiniteList<int>(0);
         private InfiniteList<int> proposeValue = new InfiniteList<int>(0);
 
         // Paxos leader detection
@@ -46,7 +43,7 @@ namespace Boney
         // Learner lock
         private readonly object learner_lock = new object();
         // Learners Variables
-        private ManualResetEvent consensusReachedTrigger = new ManualResetEvent(false);
+        private ManualResetEvent consensusReachedTrigger = new(false);
         private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
 
         // Values decided in each consensus (key=round, value=consensusResult)
@@ -56,7 +53,6 @@ namespace Boney
         public Paxos(int id, List<ServerInfo> paxos_servers)
         {
             this.id = id;
-            this.n = id;
 
             acceptors = paxos_servers;
             learners = paxos_servers;
@@ -79,14 +75,11 @@ namespace Boney
         //Consensus number = bank timeslot slot id
         public int Consensus(int newConsensus, int proposed_value)
         {
-            slot_id = newConsensus;
             // Check if the value has been learned
             if (learned.ContainsKey(newConsensus)) { return learned[newConsensus]; }
 
             lock (proposer_lock)
             {
-                // setup proposer
-                n = id;
                 // TODO add capabilities
                 consensusRound = newConsensus;
                 proposeValue.SetItem(newConsensus, proposed_value);
@@ -132,6 +125,10 @@ namespace Boney
                     Task<Promise>[] pending_requests = new Task<Promise>[clients.Length];
                     List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
+                    // Set proposal number
+                    int n = id + clients.Length * numberOfTries.GetItem(inst);
+                    numberOfTries[inst]++;
+
                     // Send prepare request to all acceptors
                     Console.WriteLine("[Propsr] Broadcasting: prepare(n={0})", n);
                     for (int i = 0; i < clients.Length; i++)
@@ -152,12 +149,12 @@ namespace Boney
 
                         completed_requests.Add(pending_requests[completedIndex]);
 
-                        for (int i = 0; i < pending_requests.Length-1; i++)
+                        for (int i = 0; i < pending_requests.Length - 1; i++)
                         {
                             if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
                         }
 
-                        Array.Resize(ref pending_requests, pending_requests.Length-1);
+                        Array.Resize(ref pending_requests, pending_requests.Length - 1);
                     }
 
                     // Process promises
@@ -185,10 +182,7 @@ namespace Boney
                         }
                     }
 
-
-
-                    // TODO better leader selection policy
-                    if (end_proposal) { isPaxosLeaderTrigger.Reset();  continue; }
+                    if (end_proposal) { isPaxosLeaderTrigger.Reset(); continue; }
                     if (max_m > 0) { proposeValue.SetItem(inst, max_m_proposal); }
 
                     // Send accept requests to acceptors with proposed value
@@ -207,8 +201,8 @@ namespace Boney
                         thread.Start();
                     }
 
-                    // TODO must create better leader selection policy
-                    isPaxosLeaderTrigger.Reset();
+                    // Give chance for consensus to be reached
+                    Thread.Sleep(timeslot_ms/4);
                 }
             }
         }
@@ -235,21 +229,35 @@ namespace Boney
 
                 // Write consensus result and unblock main thread
                 learned[commit.ConsensusInstance] = commit.AcceptedValue;
-                consensusReachedTrigger.Set();
+            }
+            lock (proposer_lock)
+            {
+                if (commit.ConsensusInstance == consensusRound)
+                    consensusReachedTrigger.Set();
             }
         }
 
         //Leader is assumed to be smallest non-suspected process id
         private void MagicFailDetector()
         {
-            //TODO - Maybe add a wait for when already leader?
-            
-            List<int> possibleLeaders = new List<int>(otherBoneyIds);
+            int current_timeslot = 1;
 
-            foreach (int suspect in suspected[slot_id]) //Get suspected ids from "slot" info
-            {
-                possibleLeaders.Remove(suspect);
+            while (true) {
+                // Set (or not) self to leader 
+                if (is_leader.GetItem(current_timeslot)) { isPaxosLeaderTrigger.Set(); }
+                else { isPaxosLeaderTrigger.Reset(); }
+
+                // Icrement timeslot counter
+                current_timeslot++;
+
+                // Sleep until next timeslot
+                Thread.Sleep(timeslot_ms);
             }
+            /*
+            //TODO - Maybe add a wait for when already leader?
+
+            // Get suspected ids from "slot" info
+            List<int> possibleLeaders = otherBoneyIds.FindAll((boney) => !(suspected[slot_id].Contains(boney)));
 
             int smallestOther = possibleLeaders.Min();
 
@@ -258,6 +266,7 @@ namespace Boney
                 isPaxosLeaderTrigger.Set();
             else
                 Thread.Sleep(500);
+            */
         }
 
         //Prepare "schedule" for Fail Detector
@@ -265,6 +274,8 @@ namespace Boney
         {
             string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
             string config_path = Path.Combine(base_path, @"Common\config.txt");
+            List<int> otherBoneyIds = new();
+            Dictionary<int, List<int>> suspected = new();
 
             string[] lines = File.ReadAllLines(config_path);
             foreach (string line in lines)
@@ -274,7 +285,10 @@ namespace Boney
                 if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && Int32.Parse(tokens[1]) != id)
                     otherBoneyIds.Add(Int32.Parse(tokens[1]));
 
-                if (tokens.Length > 1 && tokens[0] == "F")
+                else if (tokens.Length == 2 && tokens[0] == "D")
+                    timeslot_ms = Int32.Parse(tokens[1]);
+
+                else if (tokens.Length > 1 && tokens[0] == "F")
                 {
                     var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
                     List<int> susList = new(); //Sorting key is the same as value
@@ -298,6 +312,16 @@ namespace Boney
                     suspected.Add(Int32.Parse(tokens[1]), susList);
                 }
             }
+
+            foreach (int timeslot in suspected.Keys)
+            {
+                int leader_id = otherBoneyIds.FindAll(
+                    (id) => !(suspected[timeslot].Contains(id))
+                ).Min();
+                is_leader.SetItem(timeslot, leader_id == id);
+            }
+
+
         }
 
     }

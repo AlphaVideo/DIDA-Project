@@ -14,21 +14,23 @@ using System.Threading.Tasks;
 internal class BankApp
 {
     private static int processId;
+    private static DateTime startupTime;
     private static int serverPort;
     private static Timeslots? timeslots;
     private static List<BoneyServerInfo> boneyServers = new();
     private static void Main(string[] args)
     {
-        if (args.Length != 1)
+        if (args.Length != 2)
         {
-            Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + args.Length + " instead.");
+            Console.WriteLine("Error: unexpected number of arguments, expected 2, got " + args.Length + " instead.");
             Console.ReadKey();
             System.Environment.Exit(1);
         }
 
         processId = int.Parse(args[0]);
+        startupTime = DateTime.Parse(args[1]);
 
-        Console.SetWindowSize(80, 20);
+        Console.SetWindowSize(60, 20);
         Console.WriteLine("BANK process started with id " + processId);
 
         readConfig();
@@ -42,26 +44,28 @@ internal class BankApp
             Services = { BankService.BindService(service).Intercept(new ServerInterceptor()) },
             Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
         };
-        server.Start();
+        Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("h:mm:ss tt"));
+        while (DateTime.Now < startupTime) { /* do nothing */ }
 
+        server.Start();
         Console.WriteLine("Bank server listening on port " + serverPort);
-        Console.WriteLine("Press enter to exit.");
 
         //Timeslots start with index 1!!
-        //for(int i = 1; i <= 1; i++)
-        //{
+        for (int i = 1; i <= 3; i++)
+        {
             //Assuming bank servers are running as processes 4,5 and 6
             //Asks for consensus on who's the leader with random bank server as invalue candidate
             Random rnd = new Random();
             int candidate = rnd.Next(4, 7);
+            int aux = i;
 
             foreach (ServerInfo boney in boneyServers)
             {
-                Thread thread = new Thread(() => requestConsensus(boney, 1, candidate));
+                Thread thread = new Thread(() => requestConsensus(boney, aux, candidate));
                 thread.Start();
             }
-            //Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
-        //}
+            Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
+        }
 
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
@@ -77,7 +81,7 @@ internal class BankApp
             var request = new CompareSwapRequest { Slot = slot, Invalue = value };
             var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
             var reply = boneyClient.CompareAndSwap(request);
-            Console.WriteLine("[{0}] Consensus: server {1} is primary for slot {2}.",
+            Console.WriteLine("[{0}] Server {1} is primary for slot {2}.",
                 boney.Address, reply.Outvalue, slot); // TODO in real system get real timestamp instead of `i`
         }
         catch (Grpc.Core.RpcException) // Server down (different from frozen)
