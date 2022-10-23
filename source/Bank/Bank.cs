@@ -57,7 +57,7 @@ internal class BankApp
         timer.Start();
         while (slotId <= timeslots.getMaxSlots()) 
         {
-            if(timer.Elapsed.TotalMilliseconds > timeslots.getSlotDuration())
+            if(timer.Elapsed.TotalMilliseconds >= timeslots.getSlotDuration())
             {
                 //Assuming bank servers are running as processes 4,5 and 6
                 //Asks for consensus on who's the leader with random bank server as invalue candidate
