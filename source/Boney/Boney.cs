@@ -11,18 +11,19 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        if (args.Length != 1)
+        if (args.Length != 2)
         {
-            Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + args.Length + " instead.");
+            Console.WriteLine("Error: unexpected number of arguments, expected 2, got " + args.Length + " instead.");
             Console.ReadKey();
             System.Environment.Exit(1);
         }
 
         int processId = int.Parse(args[0]);
+        DateTime startupTime = DateTime.Parse(args[1]);
 
         Console.SetWindowSize(60, 20);
         Console.WriteLine("BONEY process started with id " + processId);
-        
+
         List<ServerInfo> boneyServers = new();
         int serverPort = readConfig(processId, boneyServers);
 
@@ -37,11 +38,13 @@ internal class Program
             Services = { BoneyService.BindService(boneyService), PaxosService.BindService(paxosService) },
             Ports = { new ServerPort(ServerHostname, serverPort, ServerCredentials.Insecure) }
         };
+
+        Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("h:mm:ss tt"));
+        while (DateTime.Now < startupTime) { /* do nothing */ }
+
         server.Start();
-
-        //TODO - Create Paxos object here? Or maybe in BoneyImpl
-
         Console.WriteLine("Boney server listening on port " + serverPort);
+
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
         Console.WriteLine("Boney server will now shutdown.");

@@ -7,7 +7,7 @@ P 6 bank http://localhost:10009
 # P 7 client
 # P 8 client
 S 3
-T 22:01:50
+T X
 D 50
 F 1 (1, N, NS) (2, F, S) (3, N, NS) (4, N, NS) (5, N, NS) (6, N, NS)
 F 2 (1, N, NS) (2, F, NS) (3, N, NS) (4, F, NS) (5, N, NS) (6, N, NS)

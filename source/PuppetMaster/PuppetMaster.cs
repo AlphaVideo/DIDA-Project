@@ -23,7 +23,28 @@ internal class PuppetMaster
 
         ProcessStartInfo procInfo;
 
+        //Default startup time: 20 seconds ahead
+        string startupTime = DateTime.Now.AddSeconds(20).ToString("s"); //s formatting: yyyy-mm-ddThh:mm:ss
+
         string[] lines = File.ReadAllLines(config_path);
+
+        //Time Wall Setup
+        //T X - Use default value
+        //T hh:mm:ss otherwise
+        foreach (string command in lines)
+        {
+            string[] tokens = command.Split(' ');
+            if (tokens[0].Equals("T"))
+            {
+                if (!tokens[1].Equals("X"))
+                {
+                    //Not using default startup time
+                    startupTime = DateTime.Parse(tokens[1]).ToString("s");
+                }
+                Console.WriteLine("Processes set to start at: " + startupTime);
+            }
+        }
+
         foreach (string command in lines)
         {
             string[] tokens = command.Split(' ');
@@ -34,7 +55,7 @@ internal class PuppetMaster
                 switch (tokens[2])
                 {
                     case "client":
-                        procInfo = new ProcessStartInfo(customer_path, tokens[1]);
+                        procInfo = new ProcessStartInfo(customer_path, tokens[1]); //TODO: Should clients also wait the startup time period?
                         procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating customer subprocess with id " + tokens[1]);
@@ -42,7 +63,7 @@ internal class PuppetMaster
                         break;
 
                     case "bank":
-                        procInfo = new ProcessStartInfo(bank_path, tokens[1]);
+                        procInfo = new ProcessStartInfo(bank_path, tokens[1] + " " + startupTime);
                         procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating bank subprocess with id " + tokens[1]);
@@ -50,7 +71,7 @@ internal class PuppetMaster
                         break;
 
                     case "boney":
-                        procInfo = new ProcessStartInfo(boney_path, tokens[1]);
+                        procInfo = new ProcessStartInfo(boney_path, tokens[1] + " " + startupTime);
                         procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating boney subprocess with id " + tokens[1]);
