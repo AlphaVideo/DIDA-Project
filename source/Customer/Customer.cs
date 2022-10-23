@@ -53,18 +53,18 @@ internal class Customer
                     case "D":
                     {
                         var request = new DepositRequest();
+                        try
+                        {
+                            request.Amount = int.Parse(tokens[1]);
+                        }
+                        catch (FormatException)
+                        {
+                            goto default;
+                        }
 
                         foreach (BankServerInfo server in bankServers)
                         {
-                            try
-                            {
-                                var reply = server.Client.Deposit(request);
-                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
-                            }
-                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
-                            {
-                                Console.WriteLine("Server " + server + " could not be reached.");
-                            }
+                                doDeposit(server, request);                   
                         }
                         break;
                     }
@@ -74,18 +74,18 @@ internal class Customer
                     case "W":
                     {
                         var request = new WithdrawalRequest();
+                        try
+                        {
+                            request.Amount = int.Parse(tokens[1]);
+                        }
+                        catch (FormatException)
+                        {
+                            goto default;
+                        }
 
                         foreach (BankServerInfo server in bankServers)
                         {
-                            try
-                            {
-                                var reply = server.Client.Withdrawal(request);
-                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
-                            }
-                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
-                            {
-                                Console.WriteLine("Server " + server + " could not be reached.");
-                            }
+                           doWidthrawal(server, request);
                         }
                         break;
                     }
@@ -98,15 +98,7 @@ internal class Customer
 
                         foreach (BankServerInfo server in bankServers)
                         {
-                            try
-                            {
-                                var reply = server.Client.ReadBalance(request);
-                                Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
-                            }
-                            catch (Grpc.Core.RpcException) // Server down (different from frozen)
-                            {
-                                Console.WriteLine("Server " + server + " could not be reached.");
-                            }
+                            doReadBalance(server, request);
                         }
                         break;
                     }
@@ -115,7 +107,6 @@ internal class Customer
                     case "e":
                     case "E":
                         running = false;
-                        Console.WriteLine("App is now closing. Press enter to continue.");
                         break;
 
                     default:
@@ -129,8 +120,6 @@ internal class Customer
         //GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
         //CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
         //var client = new BankService.BankServiceClient(interceptingInvoker);
-
-        Console.ReadKey();
     }
 
     public static List<BankServerInfo> readConfig()
@@ -150,31 +139,70 @@ internal class Customer
         return servers;
     }
 
-    public class ClientInterceptor : Interceptor
+    private static void doDeposit(BankServerInfo server, DepositRequest req)
     {
-        // private readonly ILogger logger;
-
-        //public GlobalServerLoggerInterceptor(ILogger logger) {
-        //    this.logger = logger;
-        //}
-
-        public override TResponse BlockingUnaryCall<TRequest, TResponse>(TRequest request, ClientInterceptorContext<TRequest, TResponse> context, BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
+        try
         {
-
-            Metadata metadata = context.Options.Headers; // read original headers
-            metadata ??= new Metadata();
-            metadata.Add("dad", "dad-value"); // add the additional metadata
-
-            // create new context because original context is readonly
-            ClientInterceptorContext<TRequest, TResponse> modifiedContext =
-                new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host,
-                    new CallOptions(metadata, context.Options.Deadline,
-                        context.Options.CancellationToken, context.Options.WriteOptions,
-                        context.Options.PropagationToken, context.Options.Credentials));
-            Console.Write("calling server...");
-            TResponse response = base.BlockingUnaryCall(request, modifiedContext, continuation);
-            return response;
+            var reply = server.Client.Deposit(req);
+            Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
         }
-
+        catch (Grpc.Core.RpcException) // Server down (different from frozen)
+        {
+            Console.WriteLine("Server " + server + " could not be reached.");
+        }
     }
+
+    private static void doWidthrawal(BankServerInfo server, WithdrawalRequest req)
+    {
+        try
+        {
+            var reply = server.Client.Withdrawal(req);
+            Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
+        }
+        catch (Grpc.Core.RpcException) // Server down (different from frozen)
+        {
+            Console.WriteLine("Server " + server + " could not be reached.");
+        }
+    }
+
+    private static void doReadBalance(BankServerInfo server, ReadBalanceRequest req)
+    {
+        try
+        {
+            var reply = server.Client.ReadBalance(req);
+            Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
+        }
+        catch (Grpc.Core.RpcException) // Server down (different from frozen)
+        {
+            Console.WriteLine("Server " + server + " could not be reached.");
+        }
+    }
+
+    //public class ClientInterceptor : Interceptor
+    //{
+    //    // private readonly ILogger logger;
+
+    //    //public GlobalServerLoggerInterceptor(ILogger logger) {
+    //    //    this.logger = logger;
+    //    //}
+
+    //    public override TResponse BlockingUnaryCall<TRequest, TResponse>(TRequest request, ClientInterceptorContext<TRequest, TResponse> context, BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
+    //    {
+
+    //        Metadata metadata = context.Options.Headers; // read original headers
+    //        metadata ??= new Metadata();
+    //        metadata.Add("dad", "dad-value"); // add the additional metadata
+
+    //        // create new context because original context is readonly
+    //        ClientInterceptorContext<TRequest, TResponse> modifiedContext =
+    //            new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host,
+    //                new CallOptions(metadata, context.Options.Deadline,
+    //                    context.Options.CancellationToken, context.Options.WriteOptions,
+    //                    context.Options.PropagationToken, context.Options.Credentials));
+    //        Console.Write("calling server...");
+    //        TResponse response = base.BlockingUnaryCall(request, modifiedContext, continuation);
+    //        return response;
+    //    }
+
+    //}
 }
