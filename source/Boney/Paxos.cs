@@ -302,10 +302,11 @@ namespace Boney
                         //State = (PID, Frozen?, Suspected?)
                         var state = info.Split(",");
                         var pid = Int32.Parse(state[0]);
-
+                        string suspectState = state[2].Trim();
+                        
                         //Only suspect other boney processes
-                        if (otherBoneyIds.Contains(pid) && state[2].Equals("S")) 
-                            susList.Add(pid); 
+                        if (otherBoneyIds.Contains(pid) && suspectState == "S")
+                            susList.Add(pid);
                         
                     }
 

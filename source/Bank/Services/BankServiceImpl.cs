@@ -25,6 +25,12 @@ namespace BankServer.Services
             _isRunning = ! _isRunning;
             return _isRunning;
         }
+
+        public void setIsRunning(bool b)
+        {
+            _isRunning = b;
+        }
+
         public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
         {
             var reply = new DepositReply();

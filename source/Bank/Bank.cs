@@ -6,6 +6,7 @@ using Grpc.Core.Interceptors;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 /* GRPC class methods */
@@ -54,13 +55,17 @@ internal class BankApp
         Console.WriteLine("Bank server listening on port " + serverPort);
 
         Stopwatch timer = new Stopwatch();
-        timer.Start();
         while (slotId <= timeslots.getMaxSlots()) 
         {
-            if(timer.Elapsed.TotalMilliseconds >= timeslots.getSlotDuration())
+            //TODO - Check if there's a prettier way to do a Frozen check
+            if (timeslots.isFrozen(slotId, processId))
+                service.setIsRunning(false);
+            else
+                service.setIsRunning(true);
+
+            //1st time slot starts right away => !timer.IsRunning condition
+            if(!timeslots.isFrozen(slotId, processId) && (timer.Elapsed.TotalMilliseconds >= timeslots.getSlotDuration() || !timer.IsRunning))
             {
-                //Assuming bank servers are running as processes 4,5 and 6
-                //Asks for consensus on who's the leader with random bank server as invalue candidate
                 Random rnd = new Random();
                 int candidate = rnd.Next(4, 7);
 
@@ -70,9 +75,9 @@ internal class BankApp
                     thread.Start();
                 }
 
-                //Restart timeslot wait and setup next slot compareAndSwap
+                //Restart timeslot wait and setup next slot id for compareAndSwap
                 slotId++;
-                timer.Restart();
+                timer.Restart(); //Also starts timer for the 1st time
             }
         }
 
@@ -120,9 +125,38 @@ internal class BankApp
                 slot_count = int.Parse(tokens[1]);
 
             if (tokens.Length == 2 && tokens[0] == "D")
+            {
                 slot_duration = int.Parse(tokens[1]);
+                timeslots = new Timeslots(slot_duration, slot_count); //Duration always comes before allocations, so timeslots can be initialized here
+            }
+
+                if (tokens.Length > 1 && tokens[0] == "F")
+            {
+                var configSlotId = int.Parse(tokens[1]);
+                var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
+
+                foreach (var match in tuples)
+                {
+                    string tuple = match.ToString();
+                    char[] charsToTrim = { '(', ')' };
+                    var info = tuple.Trim(charsToTrim);
+
+                    //State = (PID, Frozen?, Suspected?)
+                    var state = info.Split(",");
+                    var pid = Int32.Parse(state[0]);
+                    string frozenState = state[1].Trim();
+                    string suspectState = state[2].Trim();
+
+                    if (frozenState == "F")
+                    {
+                        timeslots.addFrozen(configSlotId, pid);
+                        //Console.WriteLine("ADDED FROZEN PROCESS: Process {0}; ", pid);
+                    }
+                    if (suspectState == "S")
+                        timeslots.addSuspected(configSlotId, pid);
+                }
+            }
         }
-        timeslots = new Timeslots(slot_duration, slot_count);
     }
 }
 
