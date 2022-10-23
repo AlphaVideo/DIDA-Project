@@ -5,6 +5,7 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 /* GRPC class methods */
@@ -18,6 +19,8 @@ internal class BankApp
     private static int serverPort;
     private static Timeslots? timeslots;
     private static List<BoneyServerInfo> boneyServers = new();
+    private static int slotId = 1;
+    
     private static void Main(string[] args)
     {
         if (args.Length != 2)
@@ -50,24 +53,30 @@ internal class BankApp
         server.Start();
         Console.WriteLine("Bank server listening on port " + serverPort);
 
-        //Timeslots start with index 1!!
-        for (int i = 1; i <= 3; i++)
+        Stopwatch timer = new Stopwatch();
+        timer.Start();
+        while (slotId <= timeslots.getMaxSlots()) 
         {
-            //Assuming bank servers are running as processes 4,5 and 6
-            //Asks for consensus on who's the leader with random bank server as invalue candidate
-            Random rnd = new Random();
-            int candidate = rnd.Next(4, 7);
-            int aux = i;
-
-            foreach (ServerInfo boney in boneyServers)
+            if(timer.Elapsed.TotalMilliseconds > timeslots.getSlotDuration())
             {
-                Thread thread = new Thread(() => requestConsensus(boney, aux, candidate));
-                thread.Start();
+                //Assuming bank servers are running as processes 4,5 and 6
+                //Asks for consensus on who's the leader with random bank server as invalue candidate
+                Random rnd = new Random();
+                int candidate = rnd.Next(4, 7);
+
+                foreach (ServerInfo boney in boneyServers)
+                {
+                    Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate));
+                    thread.Start();
+                }
+
+                //Restart timeslot wait and setup next slot compareAndSwap
+                slotId++;
+                timer.Restart();
             }
-            Thread.Sleep(1000); //TODO tirar isto, é só para testar, usar ManualResetEvent
         }
 
-        Console.WriteLine("Press any key to exit.");
+        Console.WriteLine("All CaS requests sent. Press any key to exit. There may still be threads executing.");
         Console.ReadKey();
 
         Console.WriteLine("Server will now shutdown.");
