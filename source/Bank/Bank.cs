@@ -58,11 +58,8 @@ internal class BankApp
         while (slotId <= timeslots.getMaxSlots()) 
         {
             //TODO - Check if there's a prettier way to do a Frozen check
-            if (timeslots.isFrozen(slotId, processId))
-                service.setIsRunning(false);
-            else
-                service.setIsRunning(true);
-
+            service.setIsRunning(!timeslots.isFrozen(slotId, processId));
+            
             //1st time slot starts right away => !timer.IsRunning condition
             if(!timeslots.isFrozen(slotId, processId) && (timer.Elapsed.TotalMilliseconds >= timeslots.getSlotDuration() || !timer.IsRunning))
             {
