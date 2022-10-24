@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Customer": {
+      "commandName": "Project",
+      "commandLineArgs": "7"
+    }
+  }
+}

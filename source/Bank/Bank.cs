@@ -93,7 +93,7 @@ internal class BankApp
             var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
             var reply = boneyClient.CompareAndSwap(request);
             Console.WriteLine("[{0}] Server {1} is primary for slot {2}.",
-                boney.Address, reply.Outvalue, slot); // TODO in real system get real timestamp instead of `i`
+                boney.Address, reply.Outvalue, slot);
         }
         catch (Grpc.Core.RpcException) // Server down (different from frozen)
         {
