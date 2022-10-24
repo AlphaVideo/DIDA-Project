@@ -24,6 +24,7 @@ namespace Boney
 
 		// Magic Fail Detector Variables
 		int timeslot_ms;
+		int maxSlots;
 		InfiniteList<bool> is_leader = new(true);
 
 
@@ -46,7 +47,7 @@ namespace Boney
 		private readonly object learner_lock = new object();
 		// Learners Variables
 		private ManualResetEvent consensusReachedTrigger = new(false);
-		private InfiniteList<InfiniteList<Tuple<int, int>>> commits;
+		private CommitHistory commits = new();
 
 		// Values decided in each consensus (key=round, value=consensusResult)
 		private Dictionary<int, int> learned  = new();
@@ -58,8 +59,6 @@ namespace Boney
 
 			acceptors = paxos_servers;
 			learners = paxos_servers;
-
-			commits = new InfiniteList<InfiniteList<Tuple<int, int>>>(new InfiniteList<Tuple<int, int>>(new Tuple<int, int>(0, 0)));
 
 			readConfig();
 
@@ -208,29 +207,32 @@ namespace Boney
 			}
 		}
 
-		public void Learner(CommitRequest commit)
+		public void Learner(CommitRequest request)
 		{
-			// ignore if we have already learnt the value for that round
-			if (learned.ContainsKey(commit.ConsensusInstance))
+			// ignore if we have already learnt the value for that instance
+			if (learned.ContainsKey(request.ConsensusInstance))
 				return;
 
 			lock (learner_lock)
 			{
-				int acceptor_i = commit.AcceptorId - 1;
-				InfiniteList<Tuple<int, int>> current_commits = commits.GetItem(commit.ConsensusInstance);
+				Dictionary<int, Commit> current_commits = commits[request.ConsensusInstance];
 
-				// if Commit is of older generation ignore else swap
-				if (current_commits.GetItem(acceptor_i).Item1 > commit.CommitGeneration) { return; }
-				else { current_commits.SetItem(acceptor_i, new Tuple<int, int>(commit.CommitGeneration, commit.AcceptedValue)); }
+				// if commit exists and is of older generation then ignore, else swap
+				if (current_commits.ContainsKey(request.AcceptorId) && current_commits[request.AcceptorId].Generation > request.CommitGeneration) {
+					return;
+				}
+				else {
+					current_commits[request.AcceptorId] = new Commit(request.CommitGeneration, request.AcceptedValue);
+				}
 
 				// Check if a majority has been achieved
-				int gen_count = current_commits.FindAll((tuple) => tuple.Item1 == commit.CommitGeneration).Count();
+				int gen_count = current_commits.Where((commit) => commit.Value.Generation == request.CommitGeneration).Count();
 				if (gen_count < acceptors.Count / 2) { return; }
 
 				// Write consensus result and unblock main thread
-				learned[commit.ConsensusInstance] = commit.AcceptedValue;
+				learned[request.ConsensusInstance] = request.AcceptedValue;
 			}
-			if (commit.ConsensusInstance == consensusRound)
+			if (request.ConsensusInstance == consensusRound)
 				consensusReachedTrigger.Set();
 		}
 
@@ -239,10 +241,16 @@ namespace Boney
 		{
 			int current_timeslot = 1;
 
-			while (true) {
+			while (current_timeslot <= maxSlots) {
 				// Set (or not) self to leader 
-				if (is_leader.GetItem(current_timeslot)) { isPaxosLeaderTrigger.Set(); }
-				else { isPaxosLeaderTrigger.Reset(); }
+				if (is_leader.GetItem(current_timeslot)) {
+					Console.WriteLine("[Paxos ] I'm the leader for slot {0}", current_timeslot);
+					isPaxosLeaderTrigger.Set();
+				}
+				else {
+					Console.WriteLine("[Paxos ] I'm NOT the leader for slot {0}", current_timeslot);
+					isPaxosLeaderTrigger.Reset();
+				}
 
 				// Icrement timeslot counter
 				current_timeslot++;
@@ -285,6 +293,9 @@ namespace Boney
 				else if (tokens.Length == 2 && tokens[0] == "D")
 					timeslot_ms = Int32.Parse(tokens[1]);
 
+				else if (tokens.Length == 2 && tokens[0] == "S")
+					maxSlots = Int32.Parse(tokens[1]);
+
 				else if (tokens.Length > 1 && tokens[0] == "F")
 				{
 					var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
@@ -318,9 +329,6 @@ namespace Boney
 				).Min();
 				is_leader.SetItem(timeslot, leader_id == id);
 			}
-
-
 		}
-
 	}
 }

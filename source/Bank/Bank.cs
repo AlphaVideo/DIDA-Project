@@ -48,7 +48,7 @@ internal class BankApp
             Services = { BankService.BindService(service).Intercept(new ServerInterceptor()) },
             Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
         };
-        Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("h:mm:ss tt"));
+        Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
         while (DateTime.Now < startupTime) { /* do nothing */ }
 
         server.Start();
@@ -78,7 +78,7 @@ internal class BankApp
             }
         }
 
-        Console.WriteLine("All CaS requests sent. Press any key to exit. There may still be threads executing.");
+        Console.WriteLine("All CaS requests sent. Press any key to exit");
         Console.ReadKey();
 
         Console.WriteLine("Server will now shutdown.");

@@ -27,6 +27,10 @@ internal class Program
         List<ServerInfo> boneyServers = new();
         int serverPort = readConfig(processId, boneyServers);
 
+        Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
+        while (DateTime.Now < startupTime) { /* do nothing */ }
+        Console.WriteLine("Started now");
+
         Paxos paxos = new Paxos(processId, boneyServers);
 
         const string ServerHostname = "localhost";
@@ -38,9 +42,6 @@ internal class Program
             Services = { BoneyService.BindService(boneyService), PaxosService.BindService(paxosService) },
             Ports = { new ServerPort(ServerHostname, serverPort, ServerCredentials.Insecure) }
         };
-
-        Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("h:mm:ss tt"));
-        while (DateTime.Now < startupTime) { /* do nothing */ }
 
         server.Start();
         Console.WriteLine("Boney server listening on port " + serverPort);

@@ -106,6 +106,8 @@ namespace Boney
 
         public override Task<EmptyReply> Commit(CommitRequest commit, ServerCallContext context)
         {
+            Console.WriteLine("[PaxImp] Received commit(n={0}, val={1})",commit.CommitGeneration, commit.AcceptedValue);
+
             paxos.Learner(commit);
             return Task.FromResult(new EmptyReply());
         }
