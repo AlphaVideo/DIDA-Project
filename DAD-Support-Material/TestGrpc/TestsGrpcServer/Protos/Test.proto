@@ -6,7 +6,7 @@ message Request {
 message Reply {
 }
 
-service BoneyService {
+service TestService {
 	rpc Test(Request) returns (Reply);
 }
 
