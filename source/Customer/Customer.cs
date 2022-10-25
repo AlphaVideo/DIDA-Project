@@ -19,7 +19,8 @@ internal class Customer
 	[STAThread]
 	static void Main(string[] argv)
 	{
-		int clientId;
+		int customerId;
+		int msgId = 0;
 		List<BankServerInfo> bankServers;
 
 		AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
@@ -33,8 +34,8 @@ internal class Customer
 			System.Environment.Exit(1);
 		}
 
-		clientId = int.Parse(argv[0]);
-		Console.WriteLine("CUSTOMER process started with id " + clientId);
+		customerId = int.Parse(argv[0]);
+		Console.WriteLine("CUSTOMER process started with id " + customerId);
 
 		bankServers = readConfig();      
 
@@ -55,14 +56,11 @@ internal class Customer
 					case "D":
 					{
 						var request = new DepositRequest();
-						try
-						{
-							request.Amount = int.Parse(tokens[1]);
-						}
-						catch (FormatException)
-						{
-							goto default;
-						}
+						request.CustomerId = customerId;
+						request.MsgId = msgId++;
+
+						try { request.Amount = int.Parse(tokens[1]); }
+						catch (FormatException) { goto default; }
 
 						foreach (BankServerInfo server in bankServers)
 						{
@@ -77,14 +75,11 @@ internal class Customer
 					case "W":
 					{
 						var request = new WithdrawalRequest();
-						try
-						{
-							request.Amount = int.Parse(tokens[1]);
-						}
-						catch (FormatException)
-						{
-							goto default;
-						}
+						request.CustomerId = customerId;
+						request.MsgId = msgId++;
+
+						try { request.Amount = int.Parse(tokens[1]); }
+						catch (FormatException) { goto default; }
 
 						foreach (BankServerInfo server in bankServers)
 						{
@@ -99,6 +94,8 @@ internal class Customer
 					case "R":
 					{
 						var request = new ReadBalanceRequest();
+						request.CustomerId = customerId;
+						request.MsgId = msgId++;
 
 						foreach (BankServerInfo server in bankServers)
 						{
@@ -149,7 +146,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.Deposit(req);
-			Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
+			Console.WriteLine("[{0}] status={1} balance={2}",server.Address, reply.Status, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{
@@ -162,7 +159,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.Withdrawal(req);
-			Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
+			Console.WriteLine("[{0}] status={1} balance={2}", server.Address, reply.Status, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{
@@ -175,7 +172,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.ReadBalance(req);
-			Console.WriteLine("reply from " + server.Address + " -> " + reply.Status);
+			Console.WriteLine("[{0}] status={1} balance={2}", server.Address, reply.Status, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{
