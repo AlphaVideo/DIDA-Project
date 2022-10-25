@@ -35,7 +35,7 @@ namespace Boney
                 int read_timestamp = read_timestamps.GetItem(prepare.ConsensusInstance);
                 Tuple<int, int> write_timestamp = write_timestamps.GetItem(prepare.ConsensusInstance);
 
-                Console.WriteLine("[PaxImp] Received prepare(n={0})", prepare.N);
+                Console.WriteLine("[Accptr] Received prepare(n={0})", prepare.N);
                 // Ignore proposal
                 if (prepare.N < read_timestamp)
                 {
@@ -74,7 +74,7 @@ namespace Boney
 
         public override Task<EmptyReply> PhaseTwo(Accept accept, ServerCallContext context)
         {
-            Console.WriteLine("[PaxImp] Received accept(n={0}, val={1})", accept.N, accept.ProposedValue);
+            Console.WriteLine("[Accptr] Received accept(n={0}, val={1})", accept.N, accept.ProposedValue);
 
             lock (acceptor_lock)
             {
@@ -93,6 +93,7 @@ namespace Boney
                         AcceptedValue = accept.ProposedValue
                     };
 
+                    Console.WriteLine("[Propsr] Broadcasting: commit(n={0}, val={1})", commit.CommitGeneration, commit.AcceptedValue);
                     foreach (ServerInfo learner in paxos.Learners)
                     {
                         Thread thread = new Thread(() => SendCommit(learner, commit));
@@ -106,7 +107,7 @@ namespace Boney
 
         public override Task<EmptyReply> Commit(CommitRequest commit, ServerCallContext context)
         {
-            Console.WriteLine("[PaxImp] Received commit(n={0}, val={1})",commit.CommitGeneration, commit.AcceptedValue);
+            Console.WriteLine("[Learnr] Received commit(n={0}, val={1})",commit.CommitGeneration, commit.AcceptedValue);
 
             paxos.Learner(commit);
             return Task.FromResult(new EmptyReply());
