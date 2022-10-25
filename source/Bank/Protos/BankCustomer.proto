@@ -8,21 +8,23 @@ message DepositRequest {
 }
 message DepositReply {
 	bool status = 1; // true if not frozen, and will try to execute
+	int32 balance = 2;
 }
 
 
 message WithdrawalRequest {
 	int32 customer_id = 1;
-	int32 request_id = 2;
+	int32 msg_id = 2;
 	int32 amount = 3;
 }
 message WithdrawalReply {
 	bool status = 1; // true if not frozen, and will try to execute
+	int32 balance = 2;
 }
 
 message ReadBalanceRequest {
 	int32 customer_id = 1;
-	int32 request_id = 2;
+	int32 msg_id = 2;
 }
 message ReadBalanceReply {
 	bool status = 1; // true if not frozen; discard value otherwise
