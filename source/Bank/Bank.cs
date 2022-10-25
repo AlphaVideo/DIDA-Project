@@ -20,7 +20,6 @@ internal class BankApp
     private static int serverPort;
     private static Timeslots? timeslots;
     private static List<BoneyServerInfo> boneyServers = new();
-    private static int slotId = 1;
     
     private static void Main(string[] args)
     {
@@ -54,14 +53,14 @@ internal class BankApp
         server.Start();
         Console.WriteLine("Bank server listening on port " + serverPort);
 
-        Stopwatch timer = new Stopwatch();
-        while (slotId <= timeslots.getMaxSlots()) 
+        //Stopwatch timer = new Stopwatch();
+        for (int slotId = 1;  slotId <= timeslots.getMaxSlots(); slotId++) 
         {
             //TODO - Check if there's a prettier way to do a Frozen check
             service.setIsRunning(!timeslots.isFrozen(slotId, processId));
             
             //1st time slot starts right away => !timer.IsRunning condition
-            if(!timeslots.isFrozen(slotId, processId) && (timer.Elapsed.TotalMilliseconds >= timeslots.getSlotDuration() || !timer.IsRunning))
+            if (!timeslots.isFrozen(slotId, processId))
             {
                 Random rnd = new Random();
                 int candidate = rnd.Next(4, 7);
@@ -73,12 +72,13 @@ internal class BankApp
                 }
 
                 //Restart timeslot wait and setup next slot id for compareAndSwap
-                slotId++;
-                timer.Restart(); //Also starts timer for the 1st time
+                //slotId++;
+                //timer.Restart(); //Also starts timer for the 1st time
             }
+            Thread.Sleep(timeslots.getSlotDuration());
         }
 
-        Console.WriteLine("All CaS requests sent. Press any key to exit");
+        Console.WriteLine("Reached end of simulation. Press any key to exit");
         Console.ReadKey();
 
         Console.WriteLine("Server will now shutdown.");
