@@ -1,0 +1,12 @@
+﻿syntax = "proto3";
+
+message Request {
+	int32 my_int = 1;
+}
+message Reply {
+}
+
+service BoneyService {
+	rpc Test(Request) returns (Reply);
+}
+
