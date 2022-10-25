@@ -1,5 +1,6 @@
 ﻿using Common;
 using Grpc.Core;
+using Grpc.Net.Client.Balancer;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace Boney
 		// Magic Fail Detector Variables
 		int timeslot_ms;
 		int maxSlots;
-		InfiniteList<bool> is_leader = new(true);
+		InfiniteList<bool> is_leader = new(false);
 
 
 		// Proposer lock
@@ -311,11 +312,10 @@ namespace Boney
 						var state = info.Split(",");
 						var pid = Int32.Parse(state[0]);
 						string suspectState = state[2].Trim();
-						
+
 						//Only suspect other boney processes
 						if (otherBoneyIds.Contains(pid) && suspectState == "S")
 							susList.Add(pid);
-						
 					}
 
 					suspected.Add(Int32.Parse(tokens[1]), susList);
@@ -324,10 +324,13 @@ namespace Boney
 
 			foreach (int timeslot in suspected.Keys)
 			{
-				int leader_id = otherBoneyIds.FindAll(
-					(id) => !(suspected[timeslot].Contains(id))
-				).Min();
-				is_leader.SetItem(timeslot, leader_id == id);
+                List<int> candidateLeaders = new List<int>(otherBoneyIds);
+				candidateLeaders.Add(id);
+
+				foreach (int sus in suspected[timeslot])
+					candidateLeaders.Remove(sus);
+
+                is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
 			}
 		}
 	}
