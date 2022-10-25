@@ -45,6 +45,10 @@ public class ClientInterceptor : Interceptor {
 
         bool cancel = false;
 
+        Console.Write("Sleeping...\n");
+        Thread.Sleep(600* 1000);
+        Console.Write("Woke Up.\n");
+
         //ClientInterceptorContext<TRequest, TResponse> modifiedContext =
         //    new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host, context.Options.WithCancellationToken(new System.Threading.CancellationToken(cancel)));
         if (cancel)

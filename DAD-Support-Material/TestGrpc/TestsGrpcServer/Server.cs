@@ -41,7 +41,7 @@ public class ServerInterceptor : Interceptor
 
     public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
     {
-        bool cancel = true;
+        bool cancel = false;
 
         Console.WriteLine("Intercepted incoming call");
 

@@ -31,7 +31,8 @@ internal class Program
         while (DateTime.Now < startupTime) { /* do nothing */ }
         Console.WriteLine("Started now");
 
-        Paxos paxos = new Paxos(processId, boneyServers);
+        PerfectChannel perfectChannel = new PerfectChannel(3000);
+        Paxos paxos = new Paxos(processId, boneyServers, perfectChannel);
 
         const string ServerHostname = "localhost";
         BoneyServiceImpl boneyService = new BoneyServiceImpl(paxos);
@@ -39,7 +40,10 @@ internal class Program
 
         Server server = new Server
         {
-            Services = { BoneyService.BindService(boneyService), PaxosService.BindService(paxosService) },
+            Services = { 
+                BoneyService.BindService(boneyService).Intercept(perfectChannel), 
+                PaxosService.BindService(paxosService).Intercept(perfectChannel)
+            },
             Ports = { new ServerPort(ServerHostname, serverPort, ServerCredentials.Insecure) }
         };
 
