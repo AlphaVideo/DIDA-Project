@@ -26,6 +26,7 @@ namespace Boney
 		// Magic Fail Detector Variables
 		int timeslot_ms;
 		int maxSlots;
+		bool hasEnded = false;
 		InfiniteList<bool> is_leader = new(false);
 
 
@@ -201,10 +202,14 @@ namespace Boney
 						Thread thread = new Thread(() => client.PhaseTwo(request));
 						thread.Start();
 					}
-
-					// Give chance for consensus to be reached
-					Thread.Sleep(timeslot_ms/4);
 				}
+
+				// Give chance for consensus to be reached
+				Random rand = new();
+				Thread.Sleep(timeslot_ms / 16 * rand.Next(1, 14));
+
+				if (hasEnded)
+					return;
 			}
 		}
 
@@ -245,7 +250,7 @@ namespace Boney
 			while (current_timeslot <= maxSlots) {
 				// Set (or not) self to leader 
 				if (is_leader.GetItem(current_timeslot)) {
-					Console.WriteLine("[Paxos ] I'm the leader for slot {0}", current_timeslot);
+					Console.WriteLine("[Paxos ] I'm the LEADER for slot {0}", current_timeslot);
 					isPaxosLeaderTrigger.Set();
 				}
 				else {
@@ -259,6 +264,8 @@ namespace Boney
 				// Sleep until next timeslot
 				Thread.Sleep(timeslot_ms);
 			}
+			Console.WriteLine("Last timeslot ({0}) has ENDED", current_timeslot - 1);
+			hasEnded = true;
 			/*
 			//TODO - Maybe add a wait for when already leader?
 
@@ -324,13 +331,13 @@ namespace Boney
 
 			foreach (int timeslot in suspected.Keys)
 			{
-                List<int> candidateLeaders = new List<int>(otherBoneyIds);
+				List<int> candidateLeaders = new List<int>(otherBoneyIds);
 				candidateLeaders.Add(id);
 
 				foreach (int sus in suspected[timeslot])
 					candidateLeaders.Remove(sus);
 
-                is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
+				is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
 			}
 		}
 	}
