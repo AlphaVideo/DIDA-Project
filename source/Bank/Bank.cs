@@ -40,11 +40,12 @@ internal class BankApp
 
         const string serverHostname = "localhost";
         BankStore store = new();
-        BankServiceImpl service = new BankServiceImpl(store);
+        BankServiceImpl bankService = new BankServiceImpl(store);
+        PrimaryBackupServiceImpl backupService = new PrimaryBackupServiceImpl();
 
         Server server = new Server
         {
-            Services = { BankService.BindService(service).Intercept(new ServerInterceptor()) },
+            Services = { BankService.BindService(bankService), PrimaryBackupService.BindService(backupService) },
             Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
         };
         Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
@@ -57,7 +58,7 @@ internal class BankApp
         for (int slotId = 1;  slotId <= timeslots.getMaxSlots(); slotId++) 
         {
             //TODO - Check if there's a prettier way to do a Frozen check
-            service.setIsRunning(!timeslots.isFrozen(slotId, processId));
+            bankService.setIsRunning(!timeslots.isFrozen(slotId, processId));
             
             //1st time slot starts right away => !timer.IsRunning condition
             if (!timeslots.isFrozen(slotId, processId))

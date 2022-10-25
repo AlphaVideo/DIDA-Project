@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Remove="Protos\Boney.proto" />
+    <None Remove="Protos\PrimaryBackup.proto" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +21,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <ProjectReference Include="..\Common\Common.csproj" />
+    <Protobuf Include="Protos\PrimaryBackup.proto" GrpcServices="Server" />
     <Protobuf Include="Protos\Boney.proto" GrpcServices="Client" />
     <Protobuf Include="Protos\BankCustomer.proto" GrpcServices="Server" />
   </ItemGroup>
