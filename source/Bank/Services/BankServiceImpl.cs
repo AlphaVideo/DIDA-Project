@@ -58,8 +58,9 @@ namespace BankServer.Services
             var reply = new ReadBalanceReply();
             reply.Status = _isRunning;
 
-            // send balance only if it's running, else send zero
-            reply.Balance = _isRunning ? _store.ReadBalance() : 0;
+            // send balance only if it's running
+            if (_isRunning)
+                reply.Balance = _store.ReadBalance();
 
             return Task.FromResult(reply);
         }
