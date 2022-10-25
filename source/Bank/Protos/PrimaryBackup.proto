@@ -1,6 +1,6 @@
 ﻿syntax = "proto3";
 
-message Operation {
+message ProtoOperation {
 	enum OpCode {
 		DEPOSIT = 0;
 		WITHDRAW = 1;
@@ -8,6 +8,8 @@ message Operation {
 	}
 	OpCode operation = 1;
 	int32 amount = 2;
+	int32 client_id = 3;
+	int32 message_id = 4;
 }
 
 message PromiseRequest {
@@ -34,7 +36,7 @@ message ListPendingRequest {
 }
 message ListPendingReply {
 	bool status = 1; // true if not frozen; discard value otherwise
-	repeated Operation pending_list = 2;
+	repeated ProtoOperation pending_list = 2;
 }
 
 
