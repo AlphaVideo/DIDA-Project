@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Grpc.Core;
 using BankServer.BankDomain;
+using Bank;
 
 namespace BankServer.Services
 {
@@ -34,10 +35,14 @@ namespace BankServer.Services
         public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
         {
             var reply = new DepositReply();
-            reply.Status = _isRunning;
 
-            if (_isRunning) // create and add request to queue
-                ;
+            Operation op;
+
+            // create operation based on request
+            // store operation in appropriate queue
+            // if this is the primary process, initiate 2-phase commit
+
+            reply.Balance = op.waitForResult();
 
             return Task.FromResult(reply);
         }
@@ -45,10 +50,14 @@ namespace BankServer.Services
         public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
         {
             var reply = new WithdrawalReply();
-            reply.Status = _isRunning;
 
-            if (_isRunning) // create and add request to queue
-                ;
+            Operation op;
+
+            // create operation based on request
+            // store operation in appropriate queue
+            // if this is the primary process, initiate 2-phase commit
+
+            reply.Balance = op.waitForResult();
 
             return Task.FromResult(reply);
         }
@@ -56,11 +65,14 @@ namespace BankServer.Services
         public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
         {
             var reply = new ReadBalanceReply();
-            reply.Status = _isRunning;
 
-            // send balance only if it's running
-            if (_isRunning)
-                reply.Balance = _store.ReadBalance();
+            Operation op;
+
+            // create operation based on request
+            // store operation in appropriate queue
+            // if this is the primary process, initiate 2-phase commit
+
+            reply.Balance = op.waitForResult();
 
             return Task.FromResult(reply);
         }

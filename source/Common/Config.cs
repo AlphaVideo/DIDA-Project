@@ -17,9 +17,9 @@ namespace Common
         int slotCount = 0;
         private Timeslots? timeslots;
         private List<int> boneyIds = new();
-        private List<BoneyServerInfo> boneyServers = new();
-        private List<BankServerInfo> bankServers = new();
-        private Dictionary<int, int> serversPorts = new(); //<ProcessId, Port>
+        private List<ServerInfo> boneyServers = new();
+        private List<ServerInfo> bankServers = new();
+        private Dictionary<int, int> servicePorts = new(); //<ProcessId, Port>
 
         //Add startupTime to constructor argument if needed
         public Config()
@@ -34,12 +34,15 @@ namespace Common
                 if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
                 {
                     boneyIds.Add(int.Parse(tokens[1]));
-                    boneyServers.Add(new BoneyServerInfo(tokens[3]));
-                    serversPorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
+                    boneyServers.Add(new ServerInfo(tokens[3]));
+                    servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
                 }
 
                 else if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
-                    serversPorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
+                {
+                    bankServers.Add(new ServerInfo(tokens[1]));
+                    servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
+                }
 
                 if (tokens.Length == 2 && tokens[0] == "S")
                     slotCount = int.Parse(tokens[1]);
@@ -83,7 +86,7 @@ namespace Common
 
         public int getMyPort(int pid)
         {
-            return serversPorts[pid];
+            return servicePorts[pid];
         }
 
         public List<int> getBoneyIds()
@@ -97,12 +100,12 @@ namespace Common
             return ids;
         }
 
-        public List<BoneyServerInfo> getBoneyServerInfos()
+        public List<ServerInfo> getBoneyServerInfos()
         {
             return boneyServers;
         }
 
-        public List<BankServerInfo> getBankServerInfos()
+        public List<ServerInfo> getBankServerInfos()
         {
             return bankServers;
         }

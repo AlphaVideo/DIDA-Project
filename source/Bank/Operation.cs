@@ -55,7 +55,8 @@ namespace Bank
         }
 
         internal int executeOn(BankStore bank)
-        {switch (_opcode)
+        {
+            switch (_opcode)
             {
                 case OpCode.DEPOSIT:    _result = bank.Deposit(_amount); break;
                 case OpCode.WITHDRAWAL: _result = bank.Withdraw(_amount); break;
@@ -66,9 +67,10 @@ namespace Bank
             return _result;
         }
 
-        public void waitExecution()
+        public int waitForResult()
         {
             _executionTrigger.WaitOne();
+            return _result;
         }
     }
 }

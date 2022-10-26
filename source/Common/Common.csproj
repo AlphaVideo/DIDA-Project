@@ -16,12 +16,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Customer\Customer.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Bank\Bank.csproj" />
-  </ItemGroup>
-
 </Project>
