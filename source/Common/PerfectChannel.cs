@@ -19,9 +19,9 @@ namespace Common
         private readonly object _lock = new object();
         private ManualResetEvent _frozen_lock = new ManualResetEvent(true);
 
-        public PerfectChannel(int timeslot) 
+        public PerfectChannel(int slotDuration) 
         {
-            _wait_time = timeslot/4;
+            _wait_time = slotDuration/4;
         }
 
         public void Freeze() { 

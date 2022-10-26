@@ -11,36 +11,20 @@ namespace BankServer.Services
 {
     internal class BankServiceImpl : BankService.BankServiceBase
     {
+        private PrimaryBackup _datacentre;
 
-        private BankStore _store;
-        private bool _isRunning;
-
-        public BankServiceImpl(BankStore store) 
+        public BankServiceImpl(PrimaryBackup datacentre)
         { 
-            _store = store;
-            _isRunning = true;
+            _datacentre = datacentre;
         }
 
-        public bool ToggleIsRunning()
-        {
-            _isRunning = ! _isRunning;
-            return _isRunning;
-        }
-
-        public void setIsRunning(bool b)
-        {
-            _isRunning = b;
-        }
 
         public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
         {
             var reply = new DepositReply();
 
-            Operation op;
-
-            // create operation based on request
-            // store operation in appropriate queue
-            // if this is the primary process, initiate 2-phase commit
+            Operation op = new(Operation.OpCode.DEPOSIT, request.Amount, request.CustomerId, request.MsgId);
+            _datacentre.queueOperation(op);
 
             reply.Balance = op.waitForResult();
 
@@ -51,11 +35,8 @@ namespace BankServer.Services
         {
             var reply = new WithdrawalReply();
 
-            Operation op;
-
-            // create operation based on request
-            // store operation in appropriate queue
-            // if this is the primary process, initiate 2-phase commit
+            Operation op = new(Operation.OpCode.WITHDRAWAL, request.Amount, request.CustomerId, request.MsgId);
+            _datacentre.queueOperation(op);
 
             reply.Balance = op.waitForResult();
 
@@ -66,11 +47,8 @@ namespace BankServer.Services
         {
             var reply = new ReadBalanceReply();
 
-            Operation op;
-
-            // create operation based on request
-            // store operation in appropriate queue
-            // if this is the primary process, initiate 2-phase commit
+            Operation op = new(Operation.OpCode.READ, 0, request.CustomerId, request.MsgId);
+            _datacentre.queueOperation(op);
 
             reply.Balance = op.waitForResult();
 

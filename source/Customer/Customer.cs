@@ -21,7 +21,7 @@ internal class Customer
 	{
 		int customerId;
 		int msgId = 0;
-		List<BankServerInfo> bankServers;
+		List<BankServerInfo> bankServers = new();
 		Config config = new();
 
 		AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
@@ -38,7 +38,10 @@ internal class Customer
 		customerId = int.Parse(argv[0]);
 		Console.WriteLine("CUSTOMER process started with id " + customerId);
 
-		bankServers = config.getBankServerInfos();      
+		foreach (string addr in config.getBankServerInfos())
+		{
+			bankServers.Add(new BankServerInfo(addr));
+		}
 
 		bool running = true;
 		while(running)
@@ -129,7 +132,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.Deposit(req);
-			Console.WriteLine("[{0}] status={1} balance={2}",server.Address, reply.Status, reply.Balance);
+			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{
@@ -142,7 +145,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.Withdrawal(req);
-			Console.WriteLine("[{0}] status={1} balance={2}", server.Address, reply.Status, reply.Balance);
+			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{
@@ -155,7 +158,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Client.ReadBalance(req);
-			Console.WriteLine("[{0}] status={1} balance={2}", server.Address, reply.Status, reply.Balance);
+			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
 		}
 		catch (Grpc.Core.RpcException) // Server down (different from frozen)
 		{

@@ -26,7 +26,11 @@ internal class Program
         Console.SetWindowSize(60, 20);
         Console.WriteLine("BONEY process started with id " + processId);
 
-        List<ServerInfo> boneyServers = config.getBankServerInfos();
+        List<ServerInfo> boneyServers = new();
+        foreach (string addr in config.getBankServerInfos())
+        {
+            boneyServers.Add(new BoneyServerInfo(addr));
+        }
         int serverPort = config.getMyPort(processId);
 
         Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));

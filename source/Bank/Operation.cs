@@ -19,7 +19,7 @@ namespace Bank
 
         private OpCode _opcode;
         private int _amount;
-        private int _clientId;
+        private int _customerId;
         private int _messageId;
         private int _seqNum;
 
@@ -28,11 +28,11 @@ namespace Bank
 
         public int SeqNum { get => _seqNum; set => _seqNum = value; }
 
-        public Operation(OpCode opcode, int amount, int clientId, int messageId)
+        public Operation(OpCode opcode, int amount, int customerId, int messageId)
         {
             _opcode = opcode;
             _amount = amount;
-            _clientId = clientId;
+            _customerId = customerId;
             _messageId = messageId;
             _seqNum = -1;
 
@@ -49,7 +49,7 @@ namespace Bank
                 case OpCode.WITHDRAWAL: op.Operation = ProtoOperation.Types.OpCode.Withdraw; op.Amount = _amount; break;
                 case OpCode.READ:       op.Operation = ProtoOperation.Types.OpCode.Read; break;
             }
-            op.ClientId = _clientId;
+            op.CustomerId = _customerId;
             op.MessageId = _messageId;
             return op;
         }

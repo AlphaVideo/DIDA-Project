@@ -17,8 +17,8 @@ namespace Common
         int slotCount = 0;
         private Timeslots? timeslots;
         private List<int> boneyIds = new();
-        private List<ServerInfo> boneyServers = new();
-        private List<ServerInfo> bankServers = new();
+        private List<string> boneyServerAddrs = new();
+        private List<string> bankServerAddrs = new();
         private Dictionary<int, int> servicePorts = new(); //<ProcessId, Port>
 
         //Add startupTime to constructor argument if needed
@@ -34,13 +34,13 @@ namespace Common
                 if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
                 {
                     boneyIds.Add(int.Parse(tokens[1]));
-                    boneyServers.Add(new ServerInfo(tokens[3]));
+                    boneyServerAddrs.Add(tokens[3]);
                     servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
                 }
 
                 else if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
                 {
-                    bankServers.Add(new ServerInfo(tokens[1]));
+                    bankServerAddrs.Add(tokens[1]);
                     servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
                 }
 
@@ -100,14 +100,14 @@ namespace Common
             return ids;
         }
 
-        public List<ServerInfo> getBoneyServerInfos()
+        public List<string> getBoneyServerInfos()
         {
-            return boneyServers;
+            return boneyServerAddrs;
         }
 
-        public List<ServerInfo> getBankServerInfos()
+        public List<string> getBankServerInfos()
         {
-            return bankServers;
+            return bankServerAddrs;
         }
 
         //public DateTime getStartupTime()

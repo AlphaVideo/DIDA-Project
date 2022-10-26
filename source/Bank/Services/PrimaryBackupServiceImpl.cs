@@ -9,7 +9,11 @@ namespace Bank.Services
 {
     internal class PrimaryBackupServiceImpl : PrimaryBackupService.PrimaryBackupServiceBase
     {
-
+        private PrimaryBackup _datacentre;
+        internal PrimaryBackupServiceImpl(PrimaryBackup datacentre)
+        {
+            _datacentre = datacentre;
+        }
 
 
 

@@ -1,4 +1,6 @@
-﻿using BankServer.BankDomain;
+﻿using Bank;
+using Bank.Services;
+using BankServer.BankDomain;
 using BankServer.Services;
 using Common;
 using Grpc.Core;
@@ -19,7 +21,7 @@ internal class BankApp
     private static DateTime startupTime;
     private static int serverPort;
     private static Timeslots? timeslots;
-    private static List<BoneyServerInfo> boneyServers;
+    private static List<ServerInfo> boneyServers = new();
     private static Config config = new();
     
     private static void Main(string[] args)
@@ -39,12 +41,18 @@ internal class BankApp
 
         serverPort = config.getMyPort(processId);
         timeslots = config.getTimeslots();
-        boneyServers = config.getBoneyServerInfos();
+
+        foreach (string addr in config.getBoneyServerInfos())
+        {
+            boneyServers.Add(new BoneyServerInfo(addr));
+        }
 
         const string serverHostname = "localhost";
         BankStore store = new();
-        BankServiceImpl bankService = new BankServiceImpl(store);
-        PrimaryBackupServiceImpl backupService = new PrimaryBackupServiceImpl();
+        PrimaryBackup primaryBackup = new(store, new PerfectChannel(config.getSlotDuration()));
+
+        BankServiceImpl bankService = new BankServiceImpl(primaryBackup);
+        PrimaryBackupServiceImpl backupService = new(primaryBackup);
 
         Server server = new Server
         {
@@ -57,11 +65,11 @@ internal class BankApp
         server.Start();
         Console.WriteLine("Bank server listening on port " + serverPort);
 
-        //Stopwatch timer = new Stopwatch();
+
         for (int slotId = 1;  slotId <= timeslots.getMaxSlots(); slotId++) 
         {
             //TODO - Check if there's a prettier way to do a Frozen check
-            bankService.setIsRunning(!timeslots.isFrozen(slotId, processId));
+            //bankService.setIsRunning(!timeslots.isFrozen(slotId, processId));
             
             //1st time slot starts right away => !timer.IsRunning condition
             if (!timeslots.isFrozen(slotId, processId))
@@ -74,10 +82,6 @@ internal class BankApp
                     Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate));
                     thread.Start();
                 }
-
-                //Restart timeslot wait and setup next slot id for compareAndSwap
-                //slotId++;
-                //timer.Restart(); //Also starts timer for the 1st time
             }
             Thread.Sleep(timeslots.getSlotDuration());
         }
@@ -106,14 +110,13 @@ internal class BankApp
     }
 }
 
-public class ServerInterceptor : Interceptor
-{
+//public class ServerInterceptor : Interceptor
+//{
+//    public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
+//    {
+//        string callId = context.RequestHeaders.GetValue("dad");
+//        Console.WriteLine("DAD header: " + callId);
+//        return base.UnaryServerHandler(request, context, continuation);
+//    }
 
-    public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
-    {
-        string callId = context.RequestHeaders.GetValue("dad");
-        Console.WriteLine("DAD header: " + callId);
-        return base.UnaryServerHandler(request, context, continuation);
-    }
-
-}
+//}
