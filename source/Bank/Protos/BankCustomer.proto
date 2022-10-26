@@ -7,8 +7,7 @@ message DepositRequest {
 	int32 amount = 3;
 }
 message DepositReply {
-	bool status = 1; // true if not frozen, and will try to execute
-	int32 balance = 2;
+	int32 balance = 1;
 }
 
 
@@ -18,8 +17,7 @@ message WithdrawalRequest {
 	int32 amount = 3;
 }
 message WithdrawalReply {
-	bool status = 1; // true if not frozen, and will try to execute
-	int32 balance = 2;
+	int32 balance = 1;
 }
 
 message ReadBalanceRequest {
@@ -27,8 +25,7 @@ message ReadBalanceRequest {
 	int32 msg_id = 2;
 }
 message ReadBalanceReply {
-	bool status = 1; // true if not frozen; discard value otherwise
-	int32 balance = 2;
+	int32 balance = 1;
 }
 
 

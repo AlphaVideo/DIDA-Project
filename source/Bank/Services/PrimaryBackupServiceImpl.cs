@@ -13,20 +13,27 @@ namespace Bank.Services
 
 
 
-        public override Task<PromiseReply> Promise(PromiseRequest request, ServerCallContext context)
+        public override Task<PrepareReply> Prepare(PrepareRequest request, ServerCallContext context)
         {
-            PromiseReply reply = new();
+            PrepareReply reply = new();
+            
+            // if sender is primary for current slot
+            //     reply.ack = true
+            // else
+            //     reply.ack = false
 
+            // 
 
             return Task.FromResult(reply);
         }
 
-        public override Task<CommitReply> Commit(CommitRequest request, ServerCallContext context)
+        public override Task<EmptyReply> Commit(CommitRequest request, ServerCallContext context)
         {
-            CommitReply reply = new();
+            // update operation database to include newly commited value
+            // execute all possible operations (where seq number is the "next ao ultimo" executado)
+            // by executing the operation, a reply message must be sent to the customer
 
-
-            return Task.FromResult(reply);
+            return Task.FromResult(new EmptyReply());
         }
         public override Task<ListPendingReply> ListPending(ListPendingRequest request, ServerCallContext context)
         {

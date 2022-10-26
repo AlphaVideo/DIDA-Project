@@ -12,36 +12,32 @@ message ProtoOperation {
 	int32 message_id = 4;
 }
 
-message PromiseRequest {
+message PrepareRequest {
 	int32 customer_id = 1;
 	int32 msg_id = 2;
 	int32 seq_number = 3;
 }
-message PromiseReply {
-	bool status = 1; // true if ACK
+message PrepareReply {
+	bool ack = 1;
 }
-
 
 message CommitRequest {
 	int32 customer_id = 1;
 	int32 msg_id = 2;
 	int32 seq_number = 3;
 }
-message CommitReply {
-	bool status = 1; // true if ACK
+message EmptyReply {
 }
 
 message ListPendingRequest {
 	int32 last_seq_num = 1;
 }
 message ListPendingReply {
-	bool status = 1; // true if not frozen; discard value otherwise
-	repeated ProtoOperation pending_list = 2;
+	repeated ProtoOperation operation_list = 1;
 }
 
-
 service PrimaryBackupService {
-	rpc Promise(PromiseRequest) returns (PromiseReply);
-	rpc Commit(CommitRequest) returns (CommitReply);
+	rpc Prepare(PrepareRequest) returns (PrepareReply);
+	rpc Commit(CommitRequest) returns (EmptyReply);
 	rpc ListPending(ListPendingRequest) returns (ListPendingReply);
 }

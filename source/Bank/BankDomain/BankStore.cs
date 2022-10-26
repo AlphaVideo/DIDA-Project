@@ -15,19 +15,17 @@ namespace BankServer.BankDomain
             _balance = 0;
         }
 
-        public bool Deposit(int amount) 
+        public int Deposit(int amount) 
         {
-            _balance += amount;
-            return true;
+            return _balance += amount;
         }
 
-        public bool Withdrawal(int amount)
+        public int Withdraw(int amount)
         {
-            if (_balance < amount) 
-                return false;
-
-            _balance -= amount;
-            return true;
+            if (_balance >= amount)
+                return _balance -= amount;
+            else
+                return 0;
         }
         public int ReadBalance()
         {
