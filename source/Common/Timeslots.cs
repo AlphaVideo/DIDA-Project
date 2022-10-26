@@ -39,6 +39,11 @@ namespace Common
         {
             _value = val;
         }
+
+        public List<int> getSuspectList()
+        {
+            return _suspectedIds;
+        }
     }
 
     public class Timeslots
@@ -92,6 +97,13 @@ namespace Common
         public int getMaxSlots()
         {
             return _maxSlots;
+        }
+
+        public List<int> getMySuspectList(int slotId, int myId)
+        {
+            var suspectList = new List<int>(_slots[slotId].getSuspectList());
+            suspectList.Remove(myId);
+            return suspectList;
         }
       
     }

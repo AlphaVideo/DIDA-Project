@@ -19,7 +19,8 @@ internal class BankApp
     private static DateTime startupTime;
     private static int serverPort;
     private static Timeslots? timeslots;
-    private static List<BoneyServerInfo> boneyServers = new();
+    private static List<BoneyServerInfo> boneyServers;
+    private static Config config = new();
     
     private static void Main(string[] args)
     {
@@ -36,7 +37,9 @@ internal class BankApp
         Console.SetWindowSize(60, 20);
         Console.WriteLine("BANK process started with id " + processId);
 
-        readConfig();
+        serverPort = config.getMyPort(processId);
+        timeslots = config.getTimeslots();
+        boneyServers = config.getBoneyServerInfos();
 
         const string serverHostname = "localhost";
         BankStore store = new();
@@ -99,61 +102,6 @@ internal class BankApp
         catch (Grpc.Core.RpcException) // Server down (different from frozen)
         {
             Console.WriteLine("Boney server " + boney + " could not be reached.");
-        }
-    }
-
-    private static void readConfig()
-    {
-        string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-        string config_path = Path.Combine(base_path, @"Common\config.txt");
-
-        int slot_duration = 0, slot_count = 0;
-
-        string[] lines = File.ReadAllLines(config_path);
-        foreach (string line in lines)
-        {
-            string[] tokens = line.Split(" ");
-            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
-                boneyServers.Add(new BoneyServerInfo(tokens[3]));
-
-            if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
-                serverPort = int.Parse(tokens[3].Split(":")[2]);
-
-            if (tokens.Length == 2 && tokens[0] == "S")
-                slot_count = int.Parse(tokens[1]);
-
-            if (tokens.Length == 2 && tokens[0] == "D")
-            {
-                slot_duration = int.Parse(tokens[1]);
-                timeslots = new Timeslots(slot_duration, slot_count); //Duration always comes before allocations, so timeslots can be initialized here
-            }
-
-                if (tokens.Length > 1 && tokens[0] == "F")
-            {
-                var configSlotId = int.Parse(tokens[1]);
-                var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
-
-                foreach (var match in tuples)
-                {
-                    string tuple = match.ToString();
-                    char[] charsToTrim = { '(', ')' };
-                    var info = tuple.Trim(charsToTrim);
-
-                    //State = (PID, Frozen?, Suspected?)
-                    var state = info.Split(",");
-                    var pid = Int32.Parse(state[0]);
-                    string frozenState = state[1].Trim();
-                    string suspectState = state[2].Trim();
-
-                    if (frozenState == "F")
-                    {
-                        timeslots.addFrozen(configSlotId, pid);
-                        //Console.WriteLine("ADDED FROZEN PROCESS: Process {0}; ", pid);
-                    }
-                    if (suspectState == "S")
-                        timeslots.addSuspected(configSlotId, pid);
-                }
-            }
         }
     }
 }

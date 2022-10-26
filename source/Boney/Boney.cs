@@ -21,11 +21,13 @@ internal class Program
         int processId = int.Parse(args[0]);
         DateTime startupTime = DateTime.Parse(args[1]);
 
+        Config config = new();
+
         Console.SetWindowSize(60, 20);
         Console.WriteLine("BONEY process started with id " + processId);
 
-        List<ServerInfo> boneyServers = new();
-        int serverPort = readConfig(processId, boneyServers);
+        List<ServerInfo> boneyServers = config.getBankServerInfos();
+        int serverPort = config.getMyPort(processId);
 
         Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
         while (DateTime.Now < startupTime) { /* do nothing */ }
@@ -54,26 +56,5 @@ internal class Program
         Console.ReadKey();
         Console.WriteLine("Boney server will now shutdown.");
         server.ShutdownAsync().Wait();
-    }
-
-    private static int readConfig(int processId, List<ServerInfo> boneyServers)
-    {
-        string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-        string config_path = Path.Combine(base_path, @"Common\config.txt");
-
-        int serverPort = 0;
-
-        string[] lines = File.ReadAllLines(config_path);
-        foreach (string line in lines)
-        {
-            string[] tokens = line.Split(" ");
-            if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
-                boneyServers.Add(new ServerInfo(tokens[3]));
-
-            if (tokens.Length == 4 && tokens[0] == "P" && tokens[1] == processId.ToString())
-                serverPort = int.Parse(tokens[3].Split(":")[2]);
-
-        }
-        return serverPort;
     }
 }

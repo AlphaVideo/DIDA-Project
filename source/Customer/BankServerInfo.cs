@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    internal class BankServerInfo : ServerInfo
+    public class BankServerInfo : ServerInfo
     {
         private BankService.BankServiceClient _client;
         public BankServerInfo(string hostname, int port) : base(hostname, port)

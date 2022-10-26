@@ -22,6 +22,7 @@ internal class Customer
 		int customerId;
 		int msgId = 0;
 		List<BankServerInfo> bankServers;
+		Config config = new();
 
 		AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
@@ -37,8 +38,7 @@ internal class Customer
 		customerId = int.Parse(argv[0]);
 		Console.WriteLine("CUSTOMER process started with id " + customerId);
 
-		bankServers = readConfig();      
-
+		bankServers = config.getBankServerInfos();      
 
 		bool running = true;
 		while(running)
@@ -122,23 +122,6 @@ internal class Customer
 		//GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
 		//CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
 		//var client = new BankService.BankServiceClient(interceptingInvoker);
-	}
-
-	public static List<BankServerInfo> readConfig()
-	{
-		string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-		string config_path = Path.Combine(base_path, @"Common\config.txt");
-
-		List<BankServerInfo> servers = new();
-
-		string[] lines = File.ReadAllLines(config_path);
-		foreach (string line in lines)
-		{
-			string[] tokens = line.Split(" ");
-			if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
-				servers.Add(new BankServerInfo(tokens[3]));
-		}
-		return servers;
 	}
 
 	private static void doDeposit(BankServerInfo server, DepositRequest req)

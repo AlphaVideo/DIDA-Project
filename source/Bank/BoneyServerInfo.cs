@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    internal class BoneyServerInfo : ServerInfo
+    public class BoneyServerInfo : ServerInfo
     {
         private BoneyService.BoneyServiceClient _client;
         public BoneyServerInfo(string hostname, int port) : base(hostname, port)

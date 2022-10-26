@@ -15,6 +15,10 @@ namespace Boney
 {
 	internal class Paxos
 	{
+		//Config
+		static Config config = new();
+		private Timeslots timeslots = config.getTimeslots();
+
 		// Server id
 		readonly int id;
 
@@ -25,8 +29,8 @@ namespace Boney
 		PaxosService.PaxosServiceClient[] clients;
 
 		// Magic Fail Detector Variables
-		int timeslot_ms;
-		int maxSlots;
+		int timeslot_ms = config.getSlotDuration();
+		int maxSlots = config.getSlotCount();
 		bool hasEnded = false;
 		InfiniteList<bool> is_leader = new(false);
 
@@ -63,7 +67,7 @@ namespace Boney
 			acceptors = paxos_servers;
 			learners = paxos_servers;
 
-			readConfig();
+			calculateLeaders();
 
 			// Prepare paxos client for acceptors
 			clients = new PaxosService.PaxosServiceClient[acceptors.Count];
@@ -284,58 +288,13 @@ namespace Boney
 		}
 
 		//Prepare "schedule" for Fail Detector
-		private void readConfig()
+		private void calculateLeaders()
 		{
-			string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-			string config_path = Path.Combine(base_path, @"Common\config.txt");
-			List<int> otherBoneyIds = new();
-			Dictionary<int, List<int>> suspected = new();
-
-			string[] lines = File.ReadAllLines(config_path);
-			foreach (string line in lines)
+			for (int timeslot = 1; timeslot <= maxSlots; timeslot++)
 			{
-				string[] tokens = line.Split(" ");
+				List<int> candidateLeaders = config.getBoneyIds();
 
-				if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney" && Int32.Parse(tokens[1]) != id)
-					otherBoneyIds.Add(Int32.Parse(tokens[1]));
-
-				else if (tokens.Length == 2 && tokens[0] == "D")
-					timeslot_ms = Int32.Parse(tokens[1]);
-
-				else if (tokens.Length == 2 && tokens[0] == "S")
-					maxSlots = Int32.Parse(tokens[1]);
-
-				else if (tokens.Length > 1 && tokens[0] == "F")
-				{
-					var tuples = Regex.Matches(line, @"[(][1-9]\d*,\s(N|F),\s(NS|S)[)]", RegexOptions.None);
-					List<int> susList = new(); //Sorting key is the same as value
-
-					foreach (var match in tuples)
-					{
-						string tuple = match.ToString();
-						char[] charsToTrim = { '(', ')' };
-						var info = tuple.Trim(charsToTrim);
-
-						//State = (PID, Frozen?, Suspected?)
-						var state = info.Split(",");
-						var pid = Int32.Parse(state[0]);
-						string suspectState = state[2].Trim();
-
-						//Only suspect other boney processes
-						if (otherBoneyIds.Contains(pid) && suspectState == "S")
-							susList.Add(pid);
-					}
-
-					suspected.Add(Int32.Parse(tokens[1]), susList);
-				}
-			}
-
-			foreach (int timeslot in suspected.Keys)
-			{
-				List<int> candidateLeaders = new List<int>(otherBoneyIds);
-				candidateLeaders.Add(id);
-
-				foreach (int sus in suspected[timeslot])
+				foreach (int sus in timeslots.getMySuspectList(timeslot, id))
 					candidateLeaders.Remove(sus);
 
 				is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
