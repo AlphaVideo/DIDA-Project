@@ -72,9 +72,9 @@ namespace Bank
             }
         }
 
-        internal bool isCurrentPrimary(string url)
+        internal bool canPrepare(string url)
         {
-            // verify if sender is really the primary for current timeslot
+            // verify if sender is really the primary for current timeslot AND? that sequence number is not already used? VERIFY LAST CONDITION
             // (im assuming we can figure it out from the url, cant we?)
         }
     }

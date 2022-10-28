@@ -20,7 +20,7 @@ namespace Bank.Services
         {
             PrepareReply reply = new();
 
-            reply.Ack = _datacentre.isCurrentPrimary(context.Peer);
+            reply.Ack = _datacentre.canPrepare(context.Peer);
 
             return Task.FromResult(reply);
         }
