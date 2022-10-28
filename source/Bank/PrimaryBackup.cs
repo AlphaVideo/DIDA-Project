@@ -28,15 +28,54 @@ namespace Bank
         {
             _uncommited.Add(op);
 
-            // IF PRIMARY
+            // IF PRIMARY DO THIS {
             Thread committer = new Thread(() => Do2PhaseCommit(op));
             committer.Start();
+            // }
 
         }
 
         internal void Do2PhaseCommit(Operation op)
         {
+            // send message to every bank
+            // wait for responses. if minority, abort
+            // if majority:
+            // send commit messages to every bank
 
+        }
+
+        internal void commitOperation(int customerId, int msgId, int seqNum)
+        {
+            Operation? op = _uncommited.Find(el => el.CustomerId == customerId && el.MessageId == msgId);
+
+            if (op == null)
+                return; // either already commited or unknown
+
+            op.SeqNum = seqNum;
+            _uncommited.Remove(op);
+            _commited.Enqueue(op, seqNum); // move to commited queueu, with priority=seqNum
+
+            executeAllPossible();
+        }
+
+        internal void executeAllPossible()
+        {
+            Operation head = _commited.Peek();
+
+            while (head != null && head.SeqNum == _lastExecuted + 1)
+            {
+                head.executeOn(_store);
+                _lastExecuted = head.SeqNum;
+
+                _executed.Add(_commited.Dequeue()); // moves operation from commited to executed
+                head = _commited.Peek();
+            }
+        }
+
+        internal bool isCurrentPrimary(string url)
+        {
+            // verify if sender is really the primary for current timeslot
+            // (im assuming we can figure it out from the url, cant we?)
         }
     }
 }

@@ -238,7 +238,7 @@ namespace Boney
 
 				// Check if a majority has been achieved
 				int gen_count = current_commits.Where((commit) => commit.Value.Generation == request.CommitGeneration).Count();
-				if (gen_count < acceptors.Count / 2) { return; }
+				if (gen_count <= acceptors.Count / 2) { return; }
 
 				// Write consensus result and unblock main thread
 				learned[request.ConsensusInstance] = request.AcceptedValue;

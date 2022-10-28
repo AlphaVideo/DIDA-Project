@@ -16,26 +16,18 @@ namespace Bank.Services
         }
 
 
-
         public override Task<PrepareReply> Prepare(PrepareRequest request, ServerCallContext context)
         {
             PrepareReply reply = new();
-            
-            // if sender is primary for current slot
-            //     reply.ack = true
-            // else
-            //     reply.ack = false
 
-            // 
+            reply.Ack = _datacentre.isCurrentPrimary(context.Peer);
 
             return Task.FromResult(reply);
         }
 
         public override Task<EmptyReply> Commit(CommitRequest request, ServerCallContext context)
         {
-            // update operation database to include newly commited value
-            // execute all possible operations (where seq number is the "next ao ultimo" executado)
-            // by executing the operation, a reply message must be sent to the customer
+            _datacentre.commitOperation(request.CustomerId, request.MsgId, request.SeqNumber);
 
             return Task.FromResult(new EmptyReply());
         }

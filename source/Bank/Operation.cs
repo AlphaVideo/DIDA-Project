@@ -26,6 +26,8 @@ namespace Bank
         private int _result;
         private ManualResetEvent _executionTrigger;
 
+        public int CustomerId { get => _customerId; set => _customerId = value; }
+        public int MessageId { get => _messageId; set => _messageId = value; }
         public int SeqNum { get => _seqNum; set => _seqNum = value; }
 
         public Operation(OpCode opcode, int amount, int customerId, int messageId)
@@ -49,8 +51,8 @@ namespace Bank
                 case OpCode.WITHDRAWAL: op.Operation = ProtoOperation.Types.OpCode.Withdraw; op.Amount = _amount; break;
                 case OpCode.READ:       op.Operation = ProtoOperation.Types.OpCode.Read; break;
             }
-            op.CustomerId = _customerId;
-            op.MessageId = _messageId;
+            op.CustomerId = CustomerId;
+            op.MessageId = MessageId;
             return op;
         }
 
