@@ -28,26 +28,41 @@ internal class Customer
 
 		Console.SetWindowSize(60, 20);
 
-		if (argv.Length != 1)
+		if (argv.Length != 2)
 		{
-			Console.WriteLine("Error: unexpected number of arguments, expected 1, got " + argv.Length + " instead.");
+			Console.WriteLine("Error: unexpected number of arguments, expected 2, got " + argv.Length + " instead.");
 			Console.ReadKey();
 			System.Environment.Exit(1);
 		}
 
 		customerId = int.Parse(argv[0]);
+
+		string inputMode = argv[1]; //"script" or "cmd"
+		string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
+        string script_path = Path.Combine(base_path, @"Customer\customer_script.txt");
+		StreamReader sr = new StreamReader(script_path);
+
 		Console.WriteLine("CUSTOMER process started with id " + customerId);
 
-		foreach (string addr in config.getBankServerInfos())
+		foreach (string addr in config.getBankServerAddresses())
 		{
 			bankServers.Add(new BankServerInfo(addr));
 		}
 
+		string ?command = null;
 		bool running = true;
 		while(running)
 		{
-			Console.Write("> ");
-			var command = Console.ReadLine();
+			if(inputMode == "cmd")
+			{
+				Console.Write("> ");
+				command = Console.ReadLine();
+			}
+			else if (inputMode == "script")
+			{
+				command = sr.ReadLine();
+			}
+
 			if(command != null)
 			{
 				string[] tokens = command.Split(' ');
@@ -62,13 +77,21 @@ internal class Customer
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
 
-						try { request.Amount = int.Parse(tokens[1]); }
-						catch (FormatException) { goto default; }
-
-						foreach (BankServerInfo server in bankServers)
+						if (tokens.Length < 2)
 						{
-								Thread thread = new Thread(() => doDeposit(server, request));
-								thread.Start();        
+							Console.WriteLine("Deposit command expects 1 additional argument.");
+							break;
+						}
+						//else if (!(int.TryParse(tokens[1], out int numI) || float.TryParse(tokens[1], out float numL)))
+						//{
+						//	Console.WriteLine("Deposit command expects int or float argument.");
+						//	break;
+						//}
+
+                        foreach (BankServerInfo server in bankServers)
+						{
+							Thread thread = new Thread(() => doDeposit(server, request));
+							thread.Start();        
 						}
 						break;
 					}
@@ -81,8 +104,17 @@ internal class Customer
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
 
-						try { request.Amount = int.Parse(tokens[1]); }
-						catch (FormatException) { goto default; }
+
+                        if (tokens.Length < 2)
+						{
+							Console.WriteLine("Withdrawal command expects 1 additional argument.");
+							break;
+						}
+						//else if (!(int.TryParse(tokens[1], out int numI) || float.TryParse(tokens[1], out float numF)))
+						//{
+						//	Console.WriteLine("Withdrawal command expects int or float argument.");
+						//	break;
+						//}
 
 						foreach (BankServerInfo server in bankServers)
 						{
@@ -108,14 +140,33 @@ internal class Customer
 						break;
 					}
 
-					//E - exit
-					case "e":
+                    //S - wait/stop
+                    case "s":
+                    case "S":
+					{
+                        if (tokens.Length < 2)
+                        {
+                            Console.WriteLine("Wait command expects 1 additional argument.");
+                            break;
+                        }
+                        else if (!(int.TryParse(tokens[1], out int num)))
+                        {
+                            Console.WriteLine("Wait command expects int argument.");
+                            break;
+                        }
+
+						Thread.Sleep(int.Parse(tokens[1]));
+                        break;
+					}
+
+                    //E - exit
+                    case "e":
 					case "E":
 						running = false;
 						break;
 
 					default:
-						Console.WriteLine("Could not recognize command. (exit with E)");
+						Console.WriteLine("Could not recognize command: {0}\n(exit with E)", command);
 						break;
 				}
 			}

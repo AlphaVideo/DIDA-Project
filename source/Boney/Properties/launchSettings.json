@@ -2,7 +2,7 @@
   "profiles": {
     "Boney": {
       "commandName": "Project",
-      "commandLineArgs": "1"
+      "commandLineArgs": "1 14:02:59"
     }
   }
 }

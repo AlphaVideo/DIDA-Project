@@ -27,7 +27,7 @@ internal class Program
         Console.WriteLine("BONEY process started with id " + processId);
 
         List<ServerInfo> boneyServers = new();
-        foreach (string addr in config.getBankServerInfos())
+        foreach (string addr in config.getBankServerAddresses())
         {
             boneyServers.Add(new BoneyServerInfo(addr));
         }

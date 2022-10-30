@@ -54,8 +54,8 @@ internal class PuppetMaster
 
                 switch (tokens[2])
                 {
-                    case "client":
-                        procInfo = new ProcessStartInfo(customer_path, tokens[1]); //TODO: Should clients also wait the startup time period?
+                    case "client": //Initialized with either "cmd" or "script"
+                        procInfo = new ProcessStartInfo(customer_path, tokens[1] + " " + "script"); //TODO: Should clients also wait the startup time period?
                         procInfo.UseShellExecute = true;
 
                         Console.WriteLine("Creating customer subprocess with id " + tokens[1]);

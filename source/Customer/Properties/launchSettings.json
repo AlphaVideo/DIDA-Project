@@ -2,7 +2,7 @@
   "profiles": {
     "Customer": {
       "commandName": "Project",
-      "commandLineArgs": "7"
+      "commandLineArgs": "7 script"
     }
   }
 }

@@ -40,7 +40,7 @@ namespace Common
 
                 else if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
                 {
-                    bankServerAddrs.Add(tokens[1]);
+                    bankServerAddrs.Add(tokens[3]);
                     servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
                 }
 
@@ -100,12 +100,12 @@ namespace Common
             return ids;
         }
 
-        public List<string> getBoneyServerInfos()
+        public List<string> getBoneyServerAddresses()
         {
             return boneyServerAddrs;
         }
 
-        public List<string> getBankServerInfos()
+        public List<string> getBankServerAddresses()
         {
             return bankServerAddrs;
         }

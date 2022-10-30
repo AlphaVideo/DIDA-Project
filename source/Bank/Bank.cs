@@ -42,7 +42,7 @@ internal class BankApp
         serverPort = config.getMyPort(processId);
         timeslots = config.getTimeslots();
 
-        foreach (string addr in config.getBoneyServerInfos())
+        foreach (string addr in config.getBoneyServerAddresses())
         {
             boneyServers.Add(new BoneyServerInfo(addr));
         }
