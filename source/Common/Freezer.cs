@@ -8,27 +8,37 @@ namespace Common
 {
     public class Freezer
     {
-        private PerfectChannel _channel;
-        private Timeslots _slots;
-        private int _count = 0;
+        int _pid;
+        int _slot_duration;
+        int _count = 0;
+        PerfectChannel _channel;
+        InfiniteList<bool> _is_frozen;
 
-        public Freezer(PerfectChannel channel, Timeslots slots)
+        public Freezer(int pid, PerfectChannel channel, Timeslots slots)
         {
+            _pid = pid;
             _channel = channel;
-            _slots = slots;
+            _slot_duration = slots.getSlotDuration();
+            _is_frozen = new InfiniteList<bool>(false);
+
+            for (int slot = 0; slot < slots.getMaxSlots(); slot++){
+                _is_frozen.Add(slots.isFrozen(slot, pid));
+            }
         }
 
         public void FreezerCycle(DateTime startTime)
         {
-
-            while (DateTime.Now < startTime)
-            {
-
-            }
+            while (DateTime.Now < startTime) {}
 
             while (true)
             {
+                if (_is_frozen.GetItem(_count++)) {
+                    channel.Freeze();
+                } else {
+                    channel.Unfreeze();
+                }
 
+                Thread.sleep(_slot_duration);
             }
         }
     }
