@@ -42,6 +42,11 @@ internal class BankApp
         serverPort = config.getMyPort(processId);
         timeslots = config.getTimeslots();
 
+        PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
+        Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
+        Thread t = new Thread(()=>freezer.FreezerCycle(startupTime));
+        t.Start();
+
         foreach (string addr in config.getBoneyServerAddresses())
         {
             boneyServers.Add(new BoneyServerInfo(addr));
@@ -49,14 +54,16 @@ internal class BankApp
 
         const string serverHostname = "localhost";
         BankStore store = new();
-        PrimaryBackup primaryBackup = new(store, new PerfectChannel(config.getSlotDuration()));
+        PrimaryBackup primaryBackup = new(store, perfectChannel);
 
         BankServiceImpl bankService = new BankServiceImpl(primaryBackup);
         PrimaryBackupServiceImpl backupService = new(primaryBackup);
 
         Server server = new Server
         {
-            Services = { BankService.BindService(bankService), PrimaryBackupService.BindService(backupService) },
+            Services = { 
+                BankService.BindService(bankService).Intercept(perfectChannel), 
+                PrimaryBackupService.BindService(backupService).Intercept(perfectChannel) },
             Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
         };
         Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));

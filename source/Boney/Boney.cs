@@ -37,7 +37,11 @@ internal class Program
         while (DateTime.Now < startupTime) { /* do nothing */ }
         Console.WriteLine("Started now");
 
-        PerfectChannel perfectChannel = new PerfectChannel(3000);
+        PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
+        Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
+        Thread t = new Thread(()=>freezer.FreezerCycle(startupTime));
+        t.Start();
+
         Paxos paxos = new Paxos(processId, boneyServers, perfectChannel);
 
         const string ServerHostname = "localhost";
