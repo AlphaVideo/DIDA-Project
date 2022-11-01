@@ -56,7 +56,6 @@ namespace Common
         {
             _frozen_lock.WaitOne();
 
-
             while (true)
             {
                 try
@@ -70,7 +69,6 @@ namespace Common
                     }
 
                     Thread.Sleep(_wait_time);
-
                 }
             }
         }

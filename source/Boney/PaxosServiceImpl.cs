@@ -94,7 +94,7 @@ namespace Boney
                     };
 
                     Console.WriteLine("[Propsr] Broadcasting: commit(n={0}, val={1})", commit.CommitGeneration, commit.AcceptedValue);
-                    foreach (ServerInfo learner in paxos.Learners)
+                    foreach (PaxosService.PaxosServiceClient learner in paxos.PaxosClients)
                     {
                         Thread thread = new Thread(() => SendCommit(learner, commit));
                         thread.Start();
@@ -113,9 +113,8 @@ namespace Boney
             return Task.FromResult(new EmptyReply());
         }
 
-        private void SendCommit(ServerInfo server_to_contact, CommitRequest commit)
+        private void SendCommit(PaxosService.PaxosServiceClient client, CommitRequest commit)
         {
-            PaxosService.PaxosServiceClient client = new PaxosService.PaxosServiceClient(server_to_contact.Channel);
             client.Commit(commit);
         }
     }

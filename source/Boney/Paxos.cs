@@ -22,11 +22,8 @@ namespace Boney
 		// Server id
 		readonly int id;
 
-		// Addresses of learners and acceptor
-		private readonly List<ServerInfo> acceptors;
-		private readonly List<ServerInfo> learners;
-
-		PaxosService.PaxosServiceClient[] clients;
+		// Channels to learners/acceptors
+		PaxosService.PaxosServiceClient[] paxosClients;
 
 		// Magic Fail Detector Variables
 		int timeslot_ms = config.getSlotDuration();
@@ -66,19 +63,16 @@ namespace Boney
 		{
 			this.id = id;
 
-			acceptors = paxos_servers;
-			learners = paxos_servers;
-
 			_startuptTime = startupTime;
 
 			calculateLeaders();
 
 			// Prepare paxos client for acceptors
-			clients = new PaxosService.PaxosServiceClient[acceptors.Count];
-			for (int i = 0; i < acceptors.Count; i++)
+			paxosClients = new PaxosService.PaxosServiceClient[paxos_servers.Count];
+			for (int i = 0; i < paxos_servers.Count; i++)
 			{
-				clients[i] = new PaxosService.PaxosServiceClient(acceptors[i].Channel.Intercept(perfectChannel));
-				Console.WriteLine(acceptors[i].Address);
+				paxosClients[i] = new PaxosService.PaxosServiceClient(paxos_servers[i].Channel.Intercept(perfectChannel));
+				Console.WriteLine(paxos_servers[i].Address);
 			}
 
 			// Start fail detector thread
@@ -92,8 +86,7 @@ namespace Boney
 		}
 
 		public int Id => id;
-		public List<ServerInfo> Acceptors => acceptors;
-		public List<ServerInfo> Learners => learners;
+		public PaxosService.PaxosServiceClient[] PaxosClients => paxosClients;
 
 		//Consensus number = bank timeslot slot id
 		public int Consensus(int newConsensus, int proposed_value)
@@ -140,18 +133,18 @@ namespace Boney
 
 				lock (proposer_lock)
 				{
-					Task<Promise>[] pending_requests = new Task<Promise>[clients.Length];
+					Task<Promise>[] pending_requests = new Task<Promise>[paxosClients.Length];
 					List<Task<Promise>> completed_requests = new List<Task<Promise>>();
 
 					// Set proposal number
-					int n = id + clients.Length * numberOfTries;
+					int n = id + paxosClients.Length * numberOfTries;
 					numberOfTries++;
 
 					// Send prepare request to all acceptors
 					Console.WriteLine("[Propsr] Broadcasting: prepare(n={0})", n);
-					for (int i = 0; i < clients.Length; i++)
+					for (int i = 0; i < paxosClients.Length; i++)
 					{
-						PaxosService.PaxosServiceClient client = clients[i];
+						PaxosService.PaxosServiceClient client = paxosClients[i];
 						// TODO perfect channel
 						pending_requests[i] = Task.Factory.StartNew<Promise>(() => client.PhaseOne(new Prepare
 						{
@@ -212,7 +205,7 @@ namespace Boney
 					};
 					Console.WriteLine("[Propsr] Broadcasting: accept(n={0}, val={1})", n, proposeValue[consensusRound]);
 
-					foreach (PaxosService.PaxosServiceClient client in clients)
+					foreach (PaxosService.PaxosServiceClient client in paxosClients)
 					{
 						// TODO perfect channel
 						Thread thread = new Thread(() => client.PhaseTwo(request));
@@ -249,7 +242,7 @@ namespace Boney
 
 				// Check if a majority has been achieved
 				int gen_count = current_commits.Where((commit) => commit.Value.Generation == request.CommitGeneration).Count();
-				if (gen_count <= acceptors.Count / 2) { return; }
+				if (gen_count <= paxosClients.Length / 2) { return; }
 
 				// Write consensus result and unblock main thread
 				learned[request.ConsensusInstance] = request.AcceptedValue;
