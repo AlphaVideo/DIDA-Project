@@ -39,8 +39,7 @@ internal class Program
 
         PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
         Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
-        Thread t = new Thread(()=>freezer.FreezerCycle(startupTime));
-        t.Start();
+        freezer.StartAt(startupTime);
 
         Paxos paxos = new Paxos(processId, boneyServers, perfectChannel);
 

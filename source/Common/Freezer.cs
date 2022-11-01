@@ -27,7 +27,13 @@ namespace Common
             }
         }
 
-        public void FreezerCycle(DateTime startTime)
+        public void StartAt(DateTime startTime)
+        {
+            Thread t = new Thread(() => FreezerCycle(startTime));
+            t.Start();
+        }
+
+        private void FreezerCycle(DateTime startTime)
         {
             while (DateTime.Now < startTime) {}
 

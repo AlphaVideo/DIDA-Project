@@ -1,8 +1,11 @@
 ﻿using BankServer.BankDomain;
 using Common;
+using Grpc.Core.Interceptors;
+using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -16,12 +19,18 @@ namespace Bank
         int _lastExecuted = 0;
 
         private BankStore _store;
-        private PerfectChannel _perfectChannel;
+        private PrimaryBackupService.PrimaryBackupServiceClient[] _banks;
 
-        internal PrimaryBackup(BankStore store, PerfectChannel perfectChannel)
+        internal PrimaryBackup(BankStore store, List<string> bankAddrs, PerfectChannel perfectChannel)
         {
             _store = store;
-            _perfectChannel = perfectChannel;
+            _banks = new PrimaryBackupService.PrimaryBackupServiceClient[bankAddrs.Count];
+
+            int i = 0;
+            foreach (string addr in bankAddrs)
+            {
+                _banks[i++] = new PrimaryBackupService.PrimaryBackupServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel));
+            }
         }
 
         internal void queueOperation(Operation op)

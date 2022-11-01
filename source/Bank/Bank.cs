@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 /* GRPC class methods */
@@ -42,19 +43,20 @@ internal class BankApp
         serverPort = config.getMyPort(processId);
         timeslots = config.getTimeslots();
 
-        PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
-        Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
-        Thread t = new Thread(()=>freezer.FreezerCycle(startupTime));
-        t.Start();
-
         foreach (string addr in config.getBoneyServerAddresses())
         {
             boneyServers.Add(new BoneyServerInfo(addr));
         }
 
+
+        PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
+        Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
+        freezer.StartAt(startupTime);
+
+
         const string serverHostname = "localhost";
         BankStore store = new();
-        PrimaryBackup primaryBackup = new(store, perfectChannel);
+        PrimaryBackup primaryBackup = new(store, config.getBankServerAddresses(), perfectChannel);
 
         BankServiceImpl bankService = new BankServiceImpl(primaryBackup);
         PrimaryBackupServiceImpl backupService = new(primaryBackup);
