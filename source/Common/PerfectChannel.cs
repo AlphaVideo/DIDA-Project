@@ -49,18 +49,19 @@ namespace Common
                     throw new RpcException(new Status(StatusCode.Unavailable, "Server Frozen!"));
                 }
             }
-            return base.UnaryServerHandler(request, context, continuation);
+            return continuation(request, context);
         }
 
         public override TResponse BlockingUnaryCall<TRequest, TResponse>(TRequest request, ClientInterceptorContext<TRequest, TResponse> context, BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
         {
             _frozen_lock.WaitOne();
 
+
             while (true)
             {
                 try
                 {
-                    return base.BlockingUnaryCall(request, context, continuation);
+                    return continuation(request, context);
                 } catch (RpcException e)
                 {
                     if (e.StatusCode != StatusCode.Unavailable)

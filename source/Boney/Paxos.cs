@@ -26,7 +26,7 @@ namespace Boney
 		private readonly List<ServerInfo> acceptors;
 		private readonly List<ServerInfo> learners;
 
-		PaxosService.PaxosServiceClient[] clients;
+        PaxosService.PaxosServiceClient[] clients;
 
 		// Magic Fail Detector Variables
 		int timeslot_ms = config.getSlotDuration();
@@ -34,6 +34,8 @@ namespace Boney
 		bool hasEnded = false;
 		InfiniteList<bool> is_leader = new(false);
 
+		// Startup time
+		DateTime _startuptTime;
 
 		// Proposer lock
 		private readonly object proposer_lock = new object();
@@ -60,20 +62,23 @@ namespace Boney
 		private Dictionary<int, int> learned  = new();
 
 
-		public Paxos(int id, List<ServerInfo> paxos_servers, PerfectChannel perfectChannel)
+		public Paxos(int id, List<ServerInfo> paxos_servers, PerfectChannel perfectChannel, DateTime startupTime)
 		{
 			this.id = id;
 
 			acceptors = paxos_servers;
 			learners = paxos_servers;
 
-			calculateLeaders();
+			_startuptTime = startupTime;
+
+            calculateLeaders();
 
 			// Prepare paxos client for acceptors
 			clients = new PaxosService.PaxosServiceClient[acceptors.Count];
 			for (int i = 0; i < acceptors.Count; i++)
 			{
 				clients[i] = new PaxosService.PaxosServiceClient(acceptors[i].Channel.Intercept(perfectChannel));
+				Console.WriteLine(acceptors[i].Address);
 			}
 
 			// Start fail detector thread
@@ -93,8 +98,11 @@ namespace Boney
 		//Consensus number = bank timeslot slot id
 		public int Consensus(int newConsensus, int proposed_value)
 		{
-			// Check if the value has been learned
-			if (learned.ContainsKey(newConsensus)) { return learned[newConsensus]; }
+			lock (learner_lock)
+			{
+				// Check if the value has been learned
+				if (learned.ContainsKey(newConsensus)) { return learned[newConsensus]; }
+			}
 
 			lock (proposer_lock)
 			{
@@ -115,7 +123,10 @@ namespace Boney
 			consensusReachedTrigger.Reset();
 			valueProposedTrigger.Reset();
 
-			return learned[newConsensus];
+			lock (learner_lock)
+			{
+				return learned[newConsensus];
+			}
 		}
 
 		private void Proposer()
@@ -252,6 +263,8 @@ namespace Boney
 		{
 			int current_timeslot = 1;
 
+			while (DateTime.Now < _startuptTime) { } 
+
 			while (current_timeslot <= maxSlots) {
 				// Set (or not) self to leader 
 				if (is_leader.GetItem(current_timeslot)) {
@@ -271,20 +284,6 @@ namespace Boney
 			}
 			Console.WriteLine("Last timeslot ({0}) has ENDED", current_timeslot - 1);
 			hasEnded = true;
-			/*
-			//TODO - Maybe add a wait for when already leader?
-
-			// Get suspected ids from "slot" info
-			List<int> possibleLeaders = otherBoneyIds.FindAll((boney) => !(suspected[slot_id].Contains(boney)));
-
-			int smallestOther = possibleLeaders.Min();
-
-			//If I'm the smallest "working" id, I'm the leader
-			if (id < smallestOther)
-				isPaxosLeaderTrigger.Set();
-			else
-				Thread.Sleep(500);
-			*/
 		}
 
 		//Prepare "schedule" for Fail Detector
