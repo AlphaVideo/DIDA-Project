@@ -38,6 +38,7 @@ internal class Program
         Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
         freezer.StartAt(startupTime);
 
+        Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
         Paxos paxos = new Paxos(processId, boneyServers, perfectChannel, startupTime);
 
         const string ServerHostname = "localhost";

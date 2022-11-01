@@ -26,7 +26,7 @@ namespace Boney
 		private readonly List<ServerInfo> acceptors;
 		private readonly List<ServerInfo> learners;
 
-        PaxosService.PaxosServiceClient[] clients;
+		PaxosService.PaxosServiceClient[] clients;
 
 		// Magic Fail Detector Variables
 		int timeslot_ms = config.getSlotDuration();
@@ -71,7 +71,7 @@ namespace Boney
 
 			_startuptTime = startupTime;
 
-            calculateLeaders();
+			calculateLeaders();
 
 			// Prepare paxos client for acceptors
 			clients = new PaxosService.PaxosServiceClient[acceptors.Count];
