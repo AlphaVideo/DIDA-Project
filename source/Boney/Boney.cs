@@ -27,22 +27,19 @@ internal class Program
         Console.WriteLine("BONEY process started with id " + processId);
 
         List<ServerInfo> boneyServers = new();
-        foreach (string addr in config.getBankServerAddresses())
+        foreach (string addr in config.getBoneyServerAddresses())
         {
             boneyServers.Add(new BoneyServerInfo(addr));
         }
         int serverPort = config.getMyPort(processId);
 
-        Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
-        while (DateTime.Now < startupTime) { /* do nothing */ }
-        Console.WriteLine("Started now");
 
         PerfectChannel perfectChannel = new PerfectChannel(config.getTimeslots().getSlotDuration());
         Freezer freezer = new Freezer(processId, perfectChannel, config.getTimeslots());
         Thread t = new Thread(()=>freezer.FreezerCycle(startupTime));
         t.Start();
 
-        Paxos paxos = new Paxos(processId, boneyServers, perfectChannel);
+        Paxos paxos = new Paxos(processId, boneyServers, perfectChannel, startupTime);
 
         const string ServerHostname = "localhost";
         BoneyServiceImpl boneyService = new BoneyServiceImpl(paxos);
