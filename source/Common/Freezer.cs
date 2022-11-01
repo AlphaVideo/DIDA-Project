@@ -10,19 +10,20 @@ namespace Common
     {
         int _pid;
         int _slot_duration;
-        int _count = 0;
+        int _slotCount;
         PerfectChannel _channel;
-        InfiniteList<bool> _is_frozen;
+        Dictionary<int, bool> _is_frozen;
 
         public Freezer(int pid, PerfectChannel channel, Timeslots slots)
         {
             _pid = pid;
             _channel = channel;
             _slot_duration = slots.getSlotDuration();
-            _is_frozen = new InfiniteList<bool>(false);
+            _slotCount = slots.getMaxSlots();
+            _is_frozen = new();
 
-            for (int slot = 0; slot < slots.getMaxSlots(); slot++){
-                _is_frozen.Add(slots.isFrozen(slot, pid));
+            for (int slot = 1; slot < slots.getMaxSlots(); slot++){
+                _is_frozen[slot] = slots.isFrozen(slot, pid);
             }
         }
 
@@ -30,15 +31,15 @@ namespace Common
         {
             while (DateTime.Now < startTime) {}
 
-            while (true)
+            for (int slot = 1; slot < _slotCount; slot++)
             {
-                if (_is_frozen.GetItem(_count++)) {
-                    channel.Freeze();
+                if (_is_frozen[slot]) {
+                    _channel.Freeze();
                 } else {
-                    channel.Unfreeze();
+                    _channel.Unfreeze();
                 }
 
-                Thread.sleep(_slot_duration);
+                Thread.Sleep(_slot_duration);
             }
         }
     }
