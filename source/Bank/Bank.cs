@@ -85,7 +85,7 @@ internal class BankApp
 
 			foreach (ServerInfo boney in boneyServers)
 			{
-				Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate));
+				Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate, perfectChannel));
 				thread.Start();
 			}
 
@@ -99,12 +99,12 @@ internal class BankApp
 		server.ShutdownAsync().Wait();
 	}
 
-	private static void requestConsensus(ServerInfo boney, int slot, int value)
+	private static void requestConsensus(ServerInfo boney, int slot, int value, PerfectChannel perfectChannel)
 	{
 		try
 		{
 			var request = new CompareSwapRequest { Slot = slot, Invalue = value };
-			var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel);
+			var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel.Intercept(perfectChannel));
 			var reply = boneyClient.CompareAndSwap(request);
 			Console.WriteLine("[{0}] Server {1} is primary for slot {2}.",
 				boney.Address, reply.Outvalue, slot);
