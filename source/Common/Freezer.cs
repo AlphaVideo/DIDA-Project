@@ -35,7 +35,7 @@ namespace Common
 
         private void FreezerCycle(DateTime startTime)
         {
-            while (DateTime.Now < startTime) {}
+            Thread.Sleep(startTime - DateTime.Now);
 
             for (int slot = 1; slot < _slotCount; slot++)
             {

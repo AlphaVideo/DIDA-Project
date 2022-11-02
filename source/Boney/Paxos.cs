@@ -255,7 +255,7 @@ namespace Boney
 		{
 			int current_timeslot = 1;
 
-			while (DateTime.Now < _startuptTime) { } 
+			Thread.Sleep(_startuptTime - DateTime.Now); 
 
 			while (current_timeslot <= maxSlots) {
 				// Set (or not) self to leader 

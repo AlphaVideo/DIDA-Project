@@ -69,29 +69,26 @@ internal class BankApp
 			Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
 		};
 		Console.WriteLine("Bank server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
-		while (DateTime.Now < startupTime) { /* do nothing */ }
 
 		server.Start();
 		Console.WriteLine("Bank server listening on port " + serverPort);
 
+		Thread.Sleep(startupTime - DateTime.Now);
 
 		for (int slotId = 1;  slotId <= timeslots.getMaxSlots(); slotId++) 
 		{
-			//TODO - Check if there's a prettier way to do a Frozen check
 			//bankService.setIsRunning(!timeslots.isFrozen(slotId, processId));
 			
 			//1st time slot starts right away => !timer.IsRunning condition
-			if (!timeslots.isFrozen(slotId, processId))
-			{
-				Random rnd = new Random();
-				int candidate = rnd.Next(4, 7);
+			Random rnd = new Random();
+			int candidate = rnd.Next(4, 7);
 
-				foreach (ServerInfo boney in boneyServers)
-				{
-					Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate));
-					thread.Start();
-				}
+			foreach (ServerInfo boney in boneyServers)
+			{
+				Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate));
+				thread.Start();
 			}
+
 			Thread.Sleep(timeslots.getSlotDuration());
 		}
 
