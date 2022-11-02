@@ -39,7 +39,7 @@ internal class Customer
 
 		string inputMode = argv[1]; //"script" or "cmd"
 		string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-        string script_path = Path.Combine(base_path, @"Customer\customer_script.txt");
+		string script_path = Path.Combine(base_path, @"Customer\customer_script.txt");
 		StreamReader sr = new StreamReader(script_path);
 
 		Console.WriteLine("CUSTOMER process started with id " + customerId);
@@ -88,7 +88,7 @@ internal class Customer
 						//	break;
 						//}
 
-                        foreach (BankServerInfo server in bankServers)
+						foreach (BankServerInfo server in bankServers)
 						{
 							Thread thread = new Thread(() => doDeposit(server, request));
 							thread.Start();        
@@ -105,7 +105,7 @@ internal class Customer
 						request.MsgId = msgId++;
 
 
-                        if (tokens.Length < 2)
+						if (tokens.Length < 2)
 						{
 							Console.WriteLine("Withdrawal command expects 1 additional argument.");
 							break;
@@ -140,27 +140,27 @@ internal class Customer
 						break;
 					}
 
-                    //S - wait/stop
-                    case "s":
-                    case "S":
+					//S - wait/stop
+					case "s":
+					case "S":
 					{
-                        if (tokens.Length < 2)
-                        {
-                            Console.WriteLine("Wait command expects 1 additional argument.");
-                            break;
-                        }
-                        else if (!(int.TryParse(tokens[1], out int num)))
-                        {
-                            Console.WriteLine("Wait command expects int argument.");
-                            break;
-                        }
+						if (tokens.Length < 2)
+						{
+							Console.WriteLine("Wait command expects 1 additional argument.");
+							break;
+						}
+						else if (!(int.TryParse(tokens[1], out int num)))
+						{
+							Console.WriteLine("Wait command expects int argument.");
+							break;
+						}
 
 						Thread.Sleep(int.Parse(tokens[1]));
-                        break;
+						break;
 					}
 
-                    //E - exit
-                    case "e":
+					//E - exit
+					case "e":
 					case "E":
 						running = false;
 						break;

@@ -145,7 +145,6 @@ namespace Boney
 					for (int i = 0; i < paxosClients.Length; i++)
 					{
 						PaxosService.PaxosServiceClient client = paxosClients[i];
-						// TODO perfect channel
 						pending_requests[i] = Task.Factory.StartNew<Promise>(() => client.PhaseOne(new Prepare
 						{
 							ConsensusInstance = consensusRound,
