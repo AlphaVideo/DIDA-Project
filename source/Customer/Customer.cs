@@ -21,14 +21,14 @@ internal class Customer
 	{
 		int customerId;
 		int msgId = 0;
-		List<BankServerInfo> bankServers = new();
+		List<BankService.BankServiceClient> bankServers = new();
 		Config config = new();
 
 		AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
 		Console.SetWindowSize(60, 20);
 
-		if (argv.Length != 2)
+		if (argv.Length != 3)
 		{
 			Console.WriteLine("Error: unexpected number of arguments, expected 2, got " + argv.Length + " instead.");
 			Console.ReadKey();
@@ -36,8 +36,11 @@ internal class Customer
 		}
 
 		customerId = int.Parse(argv[0]);
-
 		string inputMode = argv[1]; //"script" or "cmd"
+		DateTime startupTime = DateTime.Parse(argv[2]);
+
+		PerfectChannel perfectChannel = new(config.getTimeslots().getSlotDuration());
+
 		string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
 		string script_path = Path.Combine(base_path, @"Customer\customer_script.txt");
 		StreamReader sr = new StreamReader(script_path);
@@ -46,10 +49,14 @@ internal class Customer
 
 		foreach (string addr in config.getBankServerAddresses())
 		{
-			bankServers.Add(new BankServerInfo(addr));
+			bankServers.Add(new BankService.BankServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel)));
 		}
 
-		string ?command = null;
+		Console.WriteLine("Customer will begin sending requests at " + startupTime.ToString("HH:mm:ss"));
+		Thread.Sleep(startupTime - DateTime.Now);
+
+
+		string? command = null;
 		bool running = true;
 		while(running)
 		{
@@ -60,7 +67,14 @@ internal class Customer
 			}
 			else if (inputMode == "script")
 			{
+				if (sr.EndOfStream)
+				{
+					Console.WriteLine("Reached end of script. Press any key to exit.");
+					Console.ReadKey();
+				}
+
 				command = sr.ReadLine();
+				Console.WriteLine("> {0}", command);
 			}
 
 			if(command != null)
@@ -76,6 +90,7 @@ internal class Customer
 						var request = new DepositRequest();
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
+						request.Amount = int.Parse(tokens[1]);
 
 						if (tokens.Length < 2)
 						{
@@ -88,11 +103,7 @@ internal class Customer
 						//	break;
 						//}
 
-						foreach (BankServerInfo server in bankServers)
-						{
-							Thread thread = new Thread(() => doDeposit(server, request));
-							thread.Start();        
-						}
+						broadcastDeposit(bankServers, request);
 						break;
 					}
 
@@ -102,8 +113,8 @@ internal class Customer
 					{
 						var request = new WithdrawalRequest();
 						request.CustomerId = customerId;
+						request.Amount = int.Parse(tokens[1]);
 						request.MsgId = msgId++;
-
 
 						if (tokens.Length < 2)
 						{
@@ -116,11 +127,7 @@ internal class Customer
 						//	break;
 						//}
 
-						foreach (BankServerInfo server in bankServers)
-						{
-							Thread thread = new Thread(() => doWidthrawal(server, request));
-							thread.Start();
-						}
+						broadcastWithdrawal(bankServers, request);
 						break;
 					}
 
@@ -132,11 +139,7 @@ internal class Customer
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
 
-						foreach (BankServerInfo server in bankServers)
-						{
-							Thread thread = new Thread(() => doReadBalance(server, request));
-							thread.Start();
-						}
+						broadcastReadBalance(bankServers, request);
 						break;
 					}
 
@@ -178,42 +181,109 @@ internal class Customer
 		//var client = new BankService.BankServiceClient(interceptingInvoker);
 	}
 
-	private static void doDeposit(BankServerInfo server, DepositRequest req)
+	private static int broadcastDeposit(List<BankService.BankServiceClient> bankServers, DepositRequest req)
+	{
+		List<Task<int>> pendingRequests = new();
+
+		foreach (BankService.BankServiceClient bank in bankServers)
+		{
+			pendingRequests.Add(Task.Run(() => doDeposit(bank, req)));
+		}
+
+		for (int i = 0; i < pendingRequests.Count; i++)
+		{
+			int completed = Task.WaitAny(pendingRequests.ToArray());
+			int res = pendingRequests[completed].Result;
+
+			if (res != -1) return res;
+
+			pendingRequests.RemoveAt(completed);
+		}
+		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
+	}
+
+	private static int doDeposit(BankService.BankServiceClient server, DepositRequest req)
 	{
 		try
 		{
-			var reply = server.Client.Deposit(req);
-			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
+			var reply = server.Deposit(req);
+			return reply.Balance;
 		}
-		catch (Grpc.Core.RpcException) // Server down (different from frozen)
+		catch (RpcException e) // Server down (different from frozen)
 		{
+			Console.WriteLine(e);
 			Console.WriteLine("Server " + server + " could not be reached.");
+			return -1;
 		}
 	}
 
-	private static void doWidthrawal(BankServerInfo server, WithdrawalRequest req)
+	private static int broadcastWithdrawal(List<BankService.BankServiceClient> bankServers, WithdrawalRequest req)
+	{
+		List<Task<int>> pendingRequests = new();
+
+		foreach (BankService.BankServiceClient bank in bankServers)
+		{
+			pendingRequests.Add(Task.Run(() => doWithdrawal(bank, req)));
+		}
+
+		for (int i = 0; i < pendingRequests.Count; i++)
+		{
+			int completed = Task.WaitAny(pendingRequests.ToArray());
+			int res = pendingRequests[completed].Result;
+
+			if (res != -1) return res;
+
+			pendingRequests.RemoveAt(completed);
+		}
+		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
+	}
+
+	private static int doWithdrawal(BankService.BankServiceClient server, WithdrawalRequest req)
 	{
 		try
 		{
-			var reply = server.Client.Withdrawal(req);
-			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
+			var reply = server.Withdrawal(req);
+			return reply.Balance;
 		}
-		catch (Grpc.Core.RpcException) // Server down (different from frozen)
+		catch (RpcException) // Server down (different from frozen)
 		{
 			Console.WriteLine("Server " + server + " could not be reached.");
+			return -1;
 		}
 	}
 
-	private static void doReadBalance(BankServerInfo server, ReadBalanceRequest req)
+	private static int broadcastReadBalance(List<BankService.BankServiceClient> bankServers, ReadBalanceRequest req)
+	{
+		List<Task<int>> pendingRequests = new();
+
+		foreach (BankService.BankServiceClient bank in bankServers)
+		{
+			pendingRequests.Add(Task.Run(() => doReadBalance(bank, req)));
+		}
+
+		for (int i = 0; i < pendingRequests.Count; i++)
+		{
+			int completed = Task.WaitAny(pendingRequests.ToArray());
+			int res = pendingRequests[completed].Result;
+
+			if (res != -1) return res;
+
+			pendingRequests.RemoveAt(completed);
+		}
+		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
+	}
+
+	private static int doReadBalance(BankService.BankServiceClient server, ReadBalanceRequest req)
 	{
 		try
 		{
-			var reply = server.Client.ReadBalance(req);
-			Console.WriteLine("[{0}] balance={1}", server.Address, reply.Balance);
+			var reply = server.ReadBalance(req);
+			return reply.Balance;
 		}
-		catch (Grpc.Core.RpcException) // Server down (different from frozen)
+		catch (RpcException) // Server down (different from frozen)
 		{
 			Console.WriteLine("Server " + server + " could not be reached.");
+			return -1;
 		}
 	}
 
