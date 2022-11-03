@@ -8,6 +8,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -91,7 +92,7 @@ internal class Customer
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
 
-						try { request.Amount = float.Parse(tokens[1]); }
+						try { request.Amount = float.Parse(tokens[1], CultureInfo.InvariantCulture); }
 						catch (FormatException) { goto default; }
 
 						if (tokens.Length < 2)
@@ -112,7 +113,7 @@ internal class Customer
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
 
-						try { request.Amount = float.Parse(tokens[1]); }
+						try { request.Amount = float.Parse(tokens[1], CultureInfo.InvariantCulture); }
 						catch (FormatException) { goto default; }
 
 						if (tokens.Length < 2)
