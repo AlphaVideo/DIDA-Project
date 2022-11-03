@@ -17,6 +17,7 @@ namespace Common
 		int slotCount = 0;
 		private Timeslots? timeslots;
 		private List<int> boneyIds = new();
+		private List<int> bankIds = new();
 		private List<string> boneyServerAddrs = new();
 		private List<string> bankServerAddrs = new();
 		private Dictionary<int, int> servicePorts = new(); //<ProcessId, Port>
@@ -40,6 +41,7 @@ namespace Common
 
 				else if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
 				{
+					bankIds.Add(int.Parse(tokens[1]));
 					bankServerAddrs.Add(tokens[3]);
 					servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
 				}
@@ -102,6 +104,11 @@ namespace Common
 		public List<int> getBoneyIds()
 		{
 			return boneyIds;
+		}
+
+		public List<int> getBankIds()
+		{
+			return bankIds;
 		}
 		public List<int> getOtherBoneyIds(int myId)
 		{
