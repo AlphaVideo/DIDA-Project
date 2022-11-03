@@ -72,7 +72,6 @@ namespace Boney
 			for (int i = 0; i < paxos_servers.Count; i++)
 			{
 				paxosClients[i] = new PaxosService.PaxosServiceClient(paxos_servers[i].Channel.Intercept(perfectChannel));
-				Console.WriteLine(paxos_servers[i].Address);
 			}
 
 			// Start fail detector thread
@@ -133,38 +132,30 @@ namespace Boney
 
 				lock (proposer_lock)
 				{
-					Task<Promise>[] pending_requests = new Task<Promise>[paxosClients.Length];
-					List<Task<Promise>> completed_requests = new List<Task<Promise>>();
+					List<Task<Promise>> pending_requests = new();
+					List<Task<Promise>> completed_requests = new();
 
 					// Set proposal number
 					int n = id + paxosClients.Length * numberOfTries;
 					numberOfTries++;
+
+					var req = new Prepare{ConsensusInstance = consensusRound, N = n};
 
 					// Send prepare request to all acceptors
 					Console.WriteLine("[Propsr] Broadcasting: prepare(n={0})", n);
 					for (int i = 0; i < paxosClients.Length; i++)
 					{
 						PaxosService.PaxosServiceClient client = paxosClients[i];
-						pending_requests[i] = Task.Factory.StartNew<Promise>(() => client.PhaseOne(new Prepare
-						{
-							ConsensusInstance = consensusRound,
-							N = n
-						}));
+						pending_requests.Add(Task.Run(() => client.PhaseOne(req)));
 					}
 
 					// Wait for a majority of answers
-					while (pending_requests.Length > completed_requests.Count)
+					while (pending_requests.Count > completed_requests.Count)
 					{
-						int completedIndex = Task.WaitAny(pending_requests);
-
+						int completedIndex = Task.WaitAny(pending_requests.ToArray());
 						completed_requests.Add(pending_requests[completedIndex]);
 
-						for (int i = 0; i < pending_requests.Length - 1; i++)
-						{
-							if (i >= completedIndex) { pending_requests[i] = pending_requests[i + 1]; }
-						}
-
-						Array.Resize(ref pending_requests, pending_requests.Length - 1);
+						pending_requests.RemoveAt(completedIndex);
 					}
 
 					// Process promises
@@ -206,7 +197,6 @@ namespace Boney
 
 					foreach (PaxosService.PaxosServiceClient client in paxosClients)
 					{
-						// TODO perfect channel
 						Thread thread = new Thread(() => client.PhaseTwo(request));
 						thread.Start();
 					}

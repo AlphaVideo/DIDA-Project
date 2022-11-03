@@ -12,9 +12,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-/* GRPC class methods */
-/*TODO: Decide if we're going to use interceptors
- * Also clean up code and adapt it for our project */
 
 internal class BankApp
 {
@@ -56,7 +53,7 @@ internal class BankApp
 
 		const string serverHostname = "localhost";
 		BankStore store = new();
-		PrimaryBackup primaryBackup = new(store, processId, config.getBankServerAddresses(), perfectChannel);
+		PrimaryBackup primaryBackup = new(store, processId, perfectChannel, startupTime);
 
 		BankServiceImpl bankService = new BankServiceImpl(primaryBackup);
 		PrimaryBackupServiceImpl backupService = new(primaryBackup);
@@ -73,26 +70,7 @@ internal class BankApp
 		server.Start();
 		Console.WriteLine("Bank server listening on port " + serverPort);
 
-		Thread.Sleep(startupTime - DateTime.Now);
-
-		for (int slotId = 1;  slotId <= timeslots.getMaxSlots(); slotId++) 
-		{
-			//bankService.setIsRunning(!timeslots.isFrozen(slotId, processId));
-			
-			//1st time slot starts right away => !timer.IsRunning condition
-			Random rnd = new Random();
-			int candidate = rnd.Next(4, 7);
-
-			foreach (ServerInfo boney in boneyServers)
-			{
-				Thread thread = new Thread(() => requestConsensus(boney, slotId, candidate, perfectChannel));
-				thread.Start();
-			}
-
-			Thread.Sleep(timeslots.getSlotDuration());
-		}
-
-		Console.WriteLine("Reached end of simulation. Press any key to exit");
+		Console.WriteLine("Press any key to exit");
 		Console.ReadKey();
 
 		Console.WriteLine("Server will now shutdown.");
