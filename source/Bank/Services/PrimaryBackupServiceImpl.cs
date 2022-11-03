@@ -19,7 +19,6 @@ namespace Bank.Services
 		public override Task<PrepareReply> Prepare(PrepareRequest request, ServerCallContext context)
 		{
 			PrepareReply reply = new();
-
 			reply.Ack = _datacentre.canPrepare(context.Peer, request.SeqNumber);
 
 			return Task.FromResult(reply);

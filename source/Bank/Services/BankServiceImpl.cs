@@ -9,51 +9,60 @@ using Bank;
 
 namespace BankServer.Services
 {
-    internal class BankServiceImpl : BankService.BankServiceBase
-    {
-        private PrimaryBackup _datacentre;
+	internal class BankServiceImpl : BankService.BankServiceBase
+	{
+		private PrimaryBackup _datacentre;
 
-        public BankServiceImpl(PrimaryBackup datacentre)
-        { 
-            _datacentre = datacentre;
-        }
+		public BankServiceImpl(PrimaryBackup datacentre)
+		{ 
+			_datacentre = datacentre;
+		}
 
 
-        public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
-        {
-            var reply = new DepositReply();
+		public override Task<DepositReply> Deposit(DepositRequest request, ServerCallContext context)
+		{
+			var reply = new DepositReply();
 
-            Operation op = new(Operation.OpCode.DEPOSIT, request.Amount, request.CustomerId, request.MsgId);
-            _datacentre.queueOperation(op);
+			Console.WriteLine("[Bank  ] Received deposit(amount={0})", request.Amount);
+			Operation op = new(Operation.OpCode.DEPOSIT, request.Amount, request.CustomerId, request.MsgId);
+			_datacentre.queueOperation(op);
 
-            reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Result arrived, resuming");
 
-            return Task.FromResult(reply);
-        }
+			return Task.FromResult(reply);
+		}
 
-        public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
-        {
-            var reply = new WithdrawalReply();
+		public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
+		{
+			var reply = new WithdrawalReply();
 
-            Operation op = new(Operation.OpCode.WITHDRAWAL, request.Amount, request.CustomerId, request.MsgId);
-            _datacentre.queueOperation(op);
+			Console.WriteLine("[Bank  ] Received withdrawal(amount={0})", request.Amount);
+			Operation op = new(Operation.OpCode.WITHDRAWAL, request.Amount, request.CustomerId, request.MsgId);
+			_datacentre.queueOperation(op);
 
-            reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Result arrived, resuming");
 
-            return Task.FromResult(reply);
-        }
+			return Task.FromResult(reply);
+		}
 
-        public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
-        {
-            var reply = new ReadBalanceReply();
+		public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
+		{
+			var reply = new ReadBalanceReply();
 
-            Operation op = new(Operation.OpCode.READ, 0, request.CustomerId, request.MsgId);
-            _datacentre.queueOperation(op);
+			Console.WriteLine("[Bank  ] Received readBalance()");
+			Operation op = new(Operation.OpCode.READ, 0, request.CustomerId, request.MsgId);
+			_datacentre.queueOperation(op);
 
-            reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			reply.Balance = op.waitForResult();
+			Console.WriteLine("[Bank  ] Result arrived, resuming");
 
-            return Task.FromResult(reply);
-        }
+			return Task.FromResult(reply);
+		}
 
-    }
+	}
 }
