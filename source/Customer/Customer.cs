@@ -181,9 +181,9 @@ internal class Customer
 		//var client = new BankService.BankServiceClient(interceptingInvoker);
 	}
 
-	private static int broadcastDeposit(List<BankService.BankServiceClient> bankServers, DepositRequest req)
+	private static float broadcastDeposit(List<BankService.BankServiceClient> bankServers, DepositRequest req)
 	{
-		List<Task<int>> pendingRequests = new();
+		List<Task<float>> pendingRequests = new();
 
 		foreach (BankService.BankServiceClient bank in bankServers)
 		{
@@ -193,7 +193,7 @@ internal class Customer
 		for (int i = 0; i < pendingRequests.Count; i++)
 		{
 			int completed = Task.WaitAny(pendingRequests.ToArray());
-			int res = pendingRequests[completed].Result;
+			float res = pendingRequests[completed].Result;
 
 			if (res != -1) return res;
 
@@ -202,7 +202,7 @@ internal class Customer
 		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
 	}
 
-	private static int doDeposit(BankService.BankServiceClient server, DepositRequest req)
+	private static float doDeposit(BankService.BankServiceClient server, DepositRequest req)
 	{
 		try
 		{
@@ -217,9 +217,9 @@ internal class Customer
 		}
 	}
 
-	private static int broadcastWithdrawal(List<BankService.BankServiceClient> bankServers, WithdrawalRequest req)
+	private static float broadcastWithdrawal(List<BankService.BankServiceClient> bankServers, WithdrawalRequest req)
 	{
-		List<Task<int>> pendingRequests = new();
+		List<Task<float>> pendingRequests = new();
 
 		foreach (BankService.BankServiceClient bank in bankServers)
 		{
@@ -229,7 +229,7 @@ internal class Customer
 		for (int i = 0; i < pendingRequests.Count; i++)
 		{
 			int completed = Task.WaitAny(pendingRequests.ToArray());
-			int res = pendingRequests[completed].Result;
+			float res = pendingRequests[completed].Result;
 
 			if (res != -1) return res;
 
@@ -238,7 +238,7 @@ internal class Customer
 		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
 	}
 
-	private static int doWithdrawal(BankService.BankServiceClient server, WithdrawalRequest req)
+	private static float doWithdrawal(BankService.BankServiceClient server, WithdrawalRequest req)
 	{
 		try
 		{
@@ -252,9 +252,9 @@ internal class Customer
 		}
 	}
 
-	private static int broadcastReadBalance(List<BankService.BankServiceClient> bankServers, ReadBalanceRequest req)
+	private static float broadcastReadBalance(List<BankService.BankServiceClient> bankServers, ReadBalanceRequest req)
 	{
-		List<Task<int>> pendingRequests = new();
+		List<Task<float>> pendingRequests = new();
 
 		foreach (BankService.BankServiceClient bank in bankServers)
 		{
@@ -264,7 +264,7 @@ internal class Customer
 		for (int i = 0; i < pendingRequests.Count; i++)
 		{
 			int completed = Task.WaitAny(pendingRequests.ToArray());
-			int res = pendingRequests[completed].Result;
+			float res = pendingRequests[completed].Result;
 
 			if (res != -1) return res;
 
@@ -273,7 +273,7 @@ internal class Customer
 		throw new InvalidOperationException("No Bank server could be reached. Can't progress any further.");
 	}
 
-	private static int doReadBalance(BankService.BankServiceClient server, ReadBalanceRequest req)
+	private static float doReadBalance(BankService.BankServiceClient server, ReadBalanceRequest req)
 	{
 		try
 		{

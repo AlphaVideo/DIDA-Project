@@ -7,7 +7,7 @@ message ProtoOperation {
 		READ = 2;		
 	}
 	OpCode operation = 1;
-	int32 amount = 2;
+	float amount = 2;
 	int32 customer_id = 3;
 	int32 message_id = 4;
 }

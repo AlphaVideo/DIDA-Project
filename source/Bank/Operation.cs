@@ -18,19 +18,19 @@ namespace Bank
         }
 
         private OpCode _opcode;
-        private int _amount;
+        private float _amount;
         private int _customerId;
         private int _messageId;
         private int _seqNum;
 
-        private int _result;
+        private float _result;
         private ManualResetEvent _executionTrigger;
 
         public int CustomerId { get => _customerId; set => _customerId = value; }
         public int MessageId { get => _messageId; set => _messageId = value; }
         public int SeqNum { get => _seqNum; set => _seqNum = value; }
 
-        public Operation(OpCode opcode, int amount, int customerId, int messageId)
+        public Operation(OpCode opcode, float amount, int customerId, int messageId)
         {
             _opcode = opcode;
             _amount = amount;
@@ -56,7 +56,7 @@ namespace Bank
             return op;
         }
 
-        internal int executeOn(BankStore bank)
+        internal float executeOn(BankStore bank)
         {
             switch (_opcode)
             {
@@ -69,7 +69,7 @@ namespace Bank
             return _result;
         }
 
-        public int waitForResult()
+        public float waitForResult()
         {
             _executionTrigger.WaitOne();
             return _result;

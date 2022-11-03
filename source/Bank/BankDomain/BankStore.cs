@@ -8,26 +8,26 @@ namespace BankServer.BankDomain
 {
     internal class BankStore
     {
-        private int _balance; //only one client supported
+        private float _balance; //only one client supported
 
         public BankStore()
         {
             _balance = 0;
         }
 
-        public int Deposit(int amount) 
+        public float Deposit(float amount) 
         {
             return _balance += amount;
         }
 
-        public int Withdraw(int amount)
+        public float Withdraw(float amount)
         {
             if (_balance >= amount)
                 return _balance -= amount;
             else
                 return 0;
         }
-        public int ReadBalance()
+        public float ReadBalance()
         {
             return _balance;
         }
