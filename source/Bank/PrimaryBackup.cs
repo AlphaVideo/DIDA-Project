@@ -73,6 +73,9 @@ namespace Bank
 				_slotLock.EnterWriteLock();
 				_currentSlot = slot;
 				_primaryHistory[slot] = getLeader(slot);
+
+				if (slot > 1 && _primaryHistory[slot] == _processId && _primaryHistory[slot - 1] != _processId)
+					doTakeOver();
 				_slotLock.ExitWriteLock();
 
 				Thread.Sleep(slotDuration);
@@ -282,22 +285,20 @@ namespace Bank
 			if (_commited.Count == 0)
 				return;
 
-			int headSeqNum = _commited.Keys[0];
-			Operation headOp = _commited[headSeqNum];
+			Operation headOp = _commited.Values[0];
 
 			while (headOp.SeqNum == _lastExecuted + 1)
 			{
 				headOp.executeOn(_store);
 				_lastExecuted = headOp.SeqNum;
 
-				_commited.Remove(headSeqNum);
+				_commited.RemoveAt(0);
 				_executed.Add(headOp);
 
 				if (_commited.Count == 0)
 					return;
 
-				headSeqNum = _commited.Keys[0];
-				headOp = _commited[headSeqNum];
+				headOp = _commited.Values[0];
 			}
 		}
 
@@ -314,6 +315,42 @@ namespace Bank
 
 			// i) requester must be primary ii) seq must not be in commited list iii) seq must not have been executed
 			return pid == currentPrimary && !_commited.ContainsKey(seq) && _lastExecuted < seq;
+		}
+
+		// (protected) get pending operations and commit them
+		internal void doTakeOver()
+		{
+			// TODO:
+			// - send ListPending to other banks
+			// - everytime a reply arrives, add reply list to pending list (operations who werent already there)
+			// WARNING: when we receive an operation proto we cannot create a new operation object, since it'll create a duplicate.
+			//          we must find the original in the available lists and use that instead
+			// - do this until majority
+			// - execute 2PC to each one of them
+			// - return, resuming new request processing
+		}
+
+		// return pending operations and operations since lastSeqN
+		internal ListPendingReply getNewerThan(int lastSeqN)
+		{
+			ListPendingReply reply = new();
+			SortedList<int, Operation> commitedToSend = new();  // this way we dont have to worry about inserting in correct order
+
+			// TODO:
+			// add stuff to toSend:
+			// get operations from executed
+			// get operations from commited
+
+			foreach (Operation op in commitedToSend.Values)
+			{
+				reply.OperationList.Add(op.toProto());
+			}
+			foreach (Operation op in _uncommited)
+			{
+				reply.OperationList.Add(op.toProto());
+			}
+
+			return reply;
 		}
 	}
 }
