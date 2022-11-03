@@ -20,38 +20,147 @@ namespace Bank
 		private int _lastExecuted = 0;
 
 		private int _processId;
-		private int _currentPrimary;
+		private int _currentSlot;
+		private Dictionary<int, int> _primaryHistory;
+		private ReaderWriterLockSlim _slotLock;
 		private Config _config;
 
 		private BankStore _store;
 		private PrimaryBackupService.PrimaryBackupServiceClient[] _banks;
+		private BoneyService.BoneyServiceClient[] _boneys;
 
-		internal PrimaryBackup(BankStore store, int processId, List<string> bankAddrs, PerfectChannel perfectChannel)
+		internal PrimaryBackup(BankStore store, int processId, PerfectChannel perfectChannel, DateTime startupTime)
 		{
+			_config = new();
+			List<string> bankAddrs = _config.getBankServerAddresses();
+			List<string> boneyAddrs = _config.getBoneyServerAddresses();
+
 			_store = store;
 			_processId = processId;
 			_banks = new PrimaryBackupService.PrimaryBackupServiceClient[bankAddrs.Count];
+			_boneys = new BoneyService.BoneyServiceClient[boneyAddrs.Count];
 
-			_config = new();
+			_primaryHistory = new();
+			_slotLock = new();
+
 
 			int i = 0;
 			foreach (string addr in bankAddrs)
 			{
 				_banks[i++] = new PrimaryBackupService.PrimaryBackupServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel));
 			}
+			i = 0;
+			foreach (string addr in boneyAddrs)
+			{
+				_boneys[i++] = new BoneyService.BoneyServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel));
+			}
+
+			Thread updater = new Thread(() => primaryUpdater(startupTime));
+			updater.Start();
 		}
 
+		// at the beggining of each timeslot asks Boney who is the new primary
+		internal void primaryUpdater(DateTime startupTime)
+		{
+			int slotDuration = _config.getSlotDuration();
+			int slotCount = _config.getSlotCount();
+			int slot;
+
+			Thread.Sleep(startupTime - DateTime.Now);
+
+			for (slot = 1; slot <= slotCount; slot++)
+			{
+				_slotLock.EnterWriteLock();
+				_currentSlot = slot;
+				_primaryHistory[slot] = getLeader(slot);
+				_slotLock.ExitWriteLock();
+
+				Thread.Sleep(slotDuration);
+			}
+			Console.WriteLine("Last timeslot ({0}) has ENDED", slot - 1);
+		}
+
+		// sends request to Boney servers to get the new leader
+		internal int getLeader(int slot)
+		{
+			CompareSwapRequest req = new();
+			req.Slot = slot;
+			req.Invalue = getLeaderSuggestion(slot);
+
+			List<Task<int>> pendingRequests = new();
+
+			Console.WriteLine("[PrmBck] Requesting leader for slot {0}, sugesting {1}", slot, req.Invalue);
+			for (int i = 0; i < _boneys.Length; i++)
+			{
+				BoneyService.BoneyServiceClient client = _boneys[i];
+
+				pendingRequests.Add(Task.Run(() => sendLeaderRequest(client, req)));
+			}
+
+			for (int i = 0; i < pendingRequests.Count; i++)
+			{
+				int completed = Task.WaitAny(pendingRequests.ToArray());
+				int res = pendingRequests[completed].Result;
+
+				if (res != -1)
+				{
+					Console.WriteLine("[PrmBck] Bank {0} is the leader for slot {1}", res, slot);
+					return res;
+				}
+
+				pendingRequests.RemoveAt(completed);
+			}
+			throw new InvalidOperationException("No Boney server could be reached. Can't progress any further.");
+		}
+
+		// calculate which leader will this process suggest to be the new primary
+		internal int getLeaderSuggestion(int slot)
+		{
+			// se primario anterior nao for suspeito, sugerir esse
+			if (slot > 1 && !_config.getTimeslots().isSuspected(slot, _primaryHistory[slot - 1]))
+				return _primaryHistory[slot - 1];
+
+			//senao, sugerir o com pid mais baixo que nao seja suspeito
+			List<int> candidateLeaders = _config.getBankIds();
+
+			foreach (int sus in _config.getTimeslots().getMySuspectList(slot, _processId))
+				candidateLeaders.Remove(sus);
+
+			return candidateLeaders.Min();
+		}
+
+		// sends leader request to Boney
+		internal int sendLeaderRequest(BoneyService.BoneyServiceClient client, CompareSwapRequest req)
+		{
+			try
+			{
+				var reply = client.CompareAndSwap(req);
+				return reply.Outvalue;
+			}
+			catch (RpcException) // Server down (different from frozen)
+			{
+				Console.WriteLine("Server " + client.ToString() + " could not be reached.");
+				return -1;
+			}
+		}
+
+		// inserts operation in uncommited queue and, if primary, start 2-Phase Commit
 		internal void queueOperation(Operation op)
 		{
 			_uncommited.Add(op);
 
-			if (_processId == _currentPrimary)
+			_slotLock.EnterReadLock();
+			int currentPrimary = _primaryHistory[_currentSlot];
+			_slotLock.ExitReadLock();
+
+			if (_processId == currentPrimary)
 			{
 				Thread committer = new Thread(() => Do2PhaseCommit(op));
 				committer.Start();
 			}
 		}
 
+		// executes 2-Phase Commit protocol with other banks
 		internal void Do2PhaseCommit(Operation op)
 		{
 			PrepareRequest pReq = new();
@@ -62,7 +171,11 @@ namespace Bank
 
 			while (!broadcastPrepare(pReq))
 			{
-				if (_processId != _currentPrimary) return;
+				_slotLock.EnterReadLock();
+				int currentPrimary = _primaryHistory[_currentSlot];
+				_slotLock.ExitReadLock();
+
+				if (_processId != currentPrimary) return;
 
 				int newSeqNum = generateSeqNumber(); // just to see if something has changed
 
@@ -86,6 +199,7 @@ namespace Bank
 
 		}
 
+		// calculate new sequence number to try and atribute to new operation
 		internal int generateSeqNumber()
 		{
 			int last = _lastExecuted;
@@ -100,10 +214,11 @@ namespace Bank
 			return last + 1;
 		}
 
+		// broadcast prepare statement, wait for a majority of replies, if one of them NACK, abort
 		internal bool broadcastPrepare(PrepareRequest req)
 		{
-			Task<bool>[] pendingRequests = new Task<bool>[_banks.Length];
-			List<Task<bool>> completedRequests = new List<Task<bool>>();
+			List<Task<bool>> pendingRequests = new();
+			List<Task<bool>> completedRequests = new();
 
 			Console.WriteLine("[PrmBck] Broadcasting prepare(custmrId={0}, msgId={1}, seq={2})", req.CustomerId, req.CustomerId, req.SeqNumber);
 
@@ -111,21 +226,16 @@ namespace Bank
 			{
 				PrimaryBackupService.PrimaryBackupServiceClient client = _banks[i];
 
-				pendingRequests[i] = Task.Factory.StartNew<bool>(() => sendPrepare(client, req));
+				pendingRequests.Add(Task.Run(() => sendPrepare(client, req)));
 			}
 
 			// Wait for a majority of answers
-			while (pendingRequests.Length > completedRequests.Count)
+			while (pendingRequests.Count >= completedRequests.Count)
 			{
-				int completedIndex = Task.WaitAny(pendingRequests);
+				int completedIndex = Task.WaitAny(pendingRequests.ToArray());
 				completedRequests.Add(pendingRequests[completedIndex]);
 
-				for (int i = 0; i < pendingRequests.Length - 1; i++)
-				{
-					if (i >= completedIndex) { pendingRequests[i] = pendingRequests[i + 1]; }
-				}
-
-				Array.Resize(ref pendingRequests, pendingRequests.Length - 1);
+				pendingRequests.RemoveAt(completedIndex);
 			}
 
 			// if one server answered with NACK, abort
@@ -136,6 +246,7 @@ namespace Bank
 			return true;
 		}
 
+		// sends prepare request to other banks
 		internal bool sendPrepare(PrimaryBackupService.PrimaryBackupServiceClient client, PrepareRequest req)
 		{
 			try
@@ -150,6 +261,7 @@ namespace Bank
 			}
 		}
 
+		// when operation receives sequence number it's moved to commited queue, and execution is started
 		internal void commitOperation(int customerId, int msgId, int seqNum)
 		{
 			Operation? op = _uncommited.Find(el => el.CustomerId == customerId && el.MessageId == msgId);
@@ -164,6 +276,7 @@ namespace Bank
 			executeAllPossible();
 		}
 
+		// execute all possible operations in commited list (those who are contiguous with last)
 		internal void executeAllPossible()
 		{
 			if (_commited.Count == 0)
@@ -188,13 +301,19 @@ namespace Bank
 			}
 		}
 
+		// check if prepare request is valid, else reply with NACK
 		internal bool canPrepare(string url, int seq)
 		{
-			int port = int.Parse(url.Split(":")[2]);
+			Console.WriteLine("sender url: {0}", url);
+			int port = int.Parse(url.Split(":")[1]); // TODO isnt working
 			int pid = _config.getPidFromPort(port);
 
+			_slotLock.EnterReadLock();
+			int currentPrimary = _primaryHistory[_currentSlot];
+			_slotLock.ExitReadLock();
+
 			// i) requester must be primary ii) seq must not be in commited list iii) seq must not have been executed
-			return pid == _currentPrimary && !_commited.ContainsKey(seq) && _lastExecuted < seq;
+			return pid == currentPrimary && !_commited.ContainsKey(seq) && _lastExecuted < seq;
 		}
 	}
 }
