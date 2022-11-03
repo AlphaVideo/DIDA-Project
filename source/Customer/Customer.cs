@@ -30,7 +30,7 @@ internal class Customer
 
 		if (argv.Length != 3)
 		{
-			Console.WriteLine("Error: unexpected number of arguments, expected 2, got " + argv.Length + " instead.");
+			Console.WriteLine("Error: unexpected number of arguments, expected 3, got " + argv.Length + " instead.");
 			Console.ReadKey();
 			System.Environment.Exit(1);
 		}
@@ -90,18 +90,15 @@ internal class Customer
 						var request = new DepositRequest();
 						request.CustomerId = customerId;
 						request.MsgId = msgId++;
-						request.Amount = int.Parse(tokens[1]);
+
+						try { request.Amount = float.Parse(tokens[1]); }
+						catch (FormatException) { goto default; }
 
 						if (tokens.Length < 2)
 						{
 							Console.WriteLine("Deposit command expects 1 additional argument.");
 							break;
 						}
-						//else if (!(int.TryParse(tokens[1], out int numI) || float.TryParse(tokens[1], out float numL)))
-						//{
-						//	Console.WriteLine("Deposit command expects int or float argument.");
-						//	break;
-						//}
 
 						broadcastDeposit(bankServers, request);
 						break;
@@ -113,19 +110,16 @@ internal class Customer
 					{
 						var request = new WithdrawalRequest();
 						request.CustomerId = customerId;
-						request.Amount = int.Parse(tokens[1]);
 						request.MsgId = msgId++;
+
+						try { request.Amount = float.Parse(tokens[1]); }
+						catch (FormatException) { goto default; }
 
 						if (tokens.Length < 2)
 						{
 							Console.WriteLine("Withdrawal command expects 1 additional argument.");
 							break;
 						}
-						//else if (!(int.TryParse(tokens[1], out int numI) || float.TryParse(tokens[1], out float numF)))
-						//{
-						//	Console.WriteLine("Withdrawal command expects int or float argument.");
-						//	break;
-						//}
 
 						broadcastWithdrawal(bankServers, request);
 						break;
