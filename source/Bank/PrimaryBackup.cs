@@ -19,6 +19,7 @@ namespace Bank
 		private List<Operation> _executed = new();
 		private int _lastExecuted = 0;
 
+		private int _port;
 		private int _processId;
 		private int _currentSlot;
 		private Dictionary<int, int> _primaryHistory;
@@ -29,13 +30,14 @@ namespace Bank
 		private PrimaryBackupService.PrimaryBackupServiceClient[] _banks;
 		private BoneyService.BoneyServiceClient[] _boneys;
 
-		internal PrimaryBackup(BankStore store, int processId, PerfectChannel perfectChannel, DateTime startupTime)
+		internal PrimaryBackup(BankStore store, int port, int processId, PerfectChannel perfectChannel, DateTime startupTime)
 		{
 			_config = new();
 			List<string> bankAddrs = _config.getBankServerAddresses();
 			List<string> boneyAddrs = _config.getBoneyServerAddresses();
 
 			_store = store;
+			_port = port;
 			_processId = processId;
 			_banks = new PrimaryBackupService.PrimaryBackupServiceClient[bankAddrs.Count];
 			_boneys = new BoneyService.BoneyServiceClient[boneyAddrs.Count];
@@ -170,6 +172,7 @@ namespace Bank
 			pReq.CustomerId = op.CustomerId;
 			pReq.MsgId = op.MessageId;
 			pReq.SeqNumber = generateSeqNumber();
+			pReq.SenderPort = _port;
 
 
 			while (!broadcastPrepare(pReq))
@@ -303,10 +306,8 @@ namespace Bank
 		}
 
 		// check if prepare request is valid, else reply with NACK
-		internal bool canPrepare(string url, int seq)
+		internal bool canPrepare(int port, int seq)
 		{
-			Console.WriteLine("sender url: {0}", url);
-			int port = int.Parse(url.Split(":")[1]); // TODO isnt working
 			int pid = _config.getPidFromPort(port);
 
 			_slotLock.EnterReadLock();
