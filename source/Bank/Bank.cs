@@ -53,7 +53,7 @@ internal class BankApp
 
 		const string serverHostname = "localhost";
 		BankStore store = new();
-		PrimaryBackup primaryBackup = new(store, processId, perfectChannel, startupTime);
+		PrimaryBackup primaryBackup = new(store, serverPort, processId, perfectChannel, startupTime);
 
 		BankServiceImpl bankService = new BankServiceImpl(primaryBackup);
 		PrimaryBackupServiceImpl backupService = new(primaryBackup);

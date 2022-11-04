@@ -2,7 +2,7 @@
   "profiles": {
     "Bank": {
       "commandName": "Project",
-      "commandLineArgs": "4"
+      "commandLineArgs": "4 00:11"
     }
   }
 }
