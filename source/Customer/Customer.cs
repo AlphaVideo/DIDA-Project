@@ -169,11 +169,6 @@ internal class Customer
 				}
 			}
 		}
-
-		//var clientInterceptor = new ClientInterceptor();
-		//GrpcChannel channel = GrpcChannel.ForAddress("http://" + ServerHostname + ":" + ServerPort);
-		//CallInvoker interceptingInvoker = channel.Intercept(clientInterceptor);
-		//var client = new BankService.BankServiceClient(interceptingInvoker);
 	}
 
 	private static float broadcastDeposit(List<BankService.BankServiceClient> bankServers, DepositRequest req)

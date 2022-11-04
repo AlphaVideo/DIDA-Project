@@ -21,7 +21,7 @@ internal class BankApp
 	private static Timeslots? timeslots;
 	private static List<ServerInfo> boneyServers = new();
 	private static Config config = new();
-	
+
 	private static void Main(string[] args)
 	{
 		if (args.Length != 2)
@@ -60,8 +60,8 @@ internal class BankApp
 
 		Server server = new Server
 		{
-			Services = { 
-				BankService.BindService(bankService).Intercept(perfectChannel), 
+			Services = {
+				BankService.BindService(bankService).Intercept(perfectChannel),
 				PrimaryBackupService.BindService(backupService).Intercept(perfectChannel) },
 			Ports = { new ServerPort(serverHostname, serverPort, ServerCredentials.Insecure) }
 		};
@@ -76,31 +76,4 @@ internal class BankApp
 		Console.WriteLine("Server will now shutdown.");
 		server.ShutdownAsync().Wait();
 	}
-
-	private static void requestConsensus(ServerInfo boney, int slot, int value, PerfectChannel perfectChannel)
-	{
-		try
-		{
-			var request = new CompareSwapRequest { Slot = slot, Invalue = value };
-			var boneyClient = new BoneyService.BoneyServiceClient(boney.Channel.Intercept(perfectChannel));
-			var reply = boneyClient.CompareAndSwap(request);
-			Console.WriteLine("[{0}] Server {1} is primary for slot {2}.",
-				boney.Address, reply.Outvalue, slot);
-		}
-		catch (Grpc.Core.RpcException) // Server down (different from frozen)
-		{
-			Console.WriteLine("Boney server " + boney + " could not be reached.");
-		}
-	}
 }
-
-//public class ServerInterceptor : Interceptor
-//{
-//    public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
-//    {
-//        string callId = context.RequestHeaders.GetValue("dad");
-//        Console.WriteLine("DAD header: " + callId);
-//        return base.UnaryServerHandler(request, context, continuation);
-//    }
-
-//}
