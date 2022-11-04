@@ -33,7 +33,6 @@ namespace Bank.Services
 		}
 		public override Task<ListPendingReply> ListPending(ListPendingRequest request, ServerCallContext context)
 		{
-			// TODO: verify sender is current leader
 			ListPendingReply reply = _datacentre.getNewerThan(request.LastSeqNum);
 
 			return Task.FromResult(reply);

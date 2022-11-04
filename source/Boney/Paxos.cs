@@ -276,7 +276,7 @@ namespace Boney
 			{
 				List<int> candidateLeaders = new List<int>(config.getBoneyIds());
 
-                foreach (int sus in timeslots.getMySuspectList(timeslot, id))
+				foreach (int sus in timeslots.getMySuspectList(timeslot, id))
 					candidateLeaders.Remove(sus);
 				
 				is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
