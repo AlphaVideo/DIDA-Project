@@ -29,9 +29,10 @@ namespace BankServer.Services
 
 			Console.WriteLine("[Bank  ] Will now block awaiting result");
 			reply.Balance = op.waitForResult();
-			Console.WriteLine("[Bank  ] Result arrived, resuming");
+            Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
+            reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";
 
-			return Task.FromResult(reply);
+            return Task.FromResult(reply);
 		}
 
 		public override Task<WithdrawalReply> Withdrawal(WithdrawalRequest request, ServerCallContext context)
@@ -44,9 +45,10 @@ namespace BankServer.Services
 
 			Console.WriteLine("[Bank  ] Will now block awaiting result");
 			reply.Balance = op.waitForResult();
-			Console.WriteLine("[Bank  ] Result arrived, resuming");
+			Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
+            reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";
 
-			return Task.FromResult(reply);
+            return Task.FromResult(reply);
 		}
 
 		public override Task<ReadBalanceReply> ReadBalance(ReadBalanceRequest request, ServerCallContext context)
@@ -59,9 +61,10 @@ namespace BankServer.Services
 
 			Console.WriteLine("[Bank  ] Will now block awaiting result");
 			reply.Balance = op.waitForResult();
-			Console.WriteLine("[Bank  ] Result arrived, resuming");
+            Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
+			reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";
 
-			return Task.FromResult(reply);
+            return Task.FromResult(reply);
 		}
 
 	}

@@ -353,5 +353,15 @@ namespace Bank
 
 			return reply;
 		}
+
+		//For client to know what kind of server is replying
+		internal bool isPrimaryServer()
+		{
+            _slotLock.EnterReadLock();
+            var res = _primaryHistory[_currentSlot] == _processId;
+            _slotLock.ExitReadLock();
+
+			return res;
+        }
 	}
 }

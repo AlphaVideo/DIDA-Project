@@ -202,7 +202,9 @@ internal class Customer
 		try
 		{
 			var reply = server.Deposit(req);
-			return reply.Balance;
+            Console.WriteLine("[DEPOSIT] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+
+            return reply.Balance;
 		}
 		catch (RpcException e) // Server down (different from frozen)
 		{
@@ -238,7 +240,9 @@ internal class Customer
 		try
 		{
 			var reply = server.Withdrawal(req);
-			return reply.Balance;
+            Console.WriteLine("[WITHDRAWAL] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+
+            return reply.Balance;
 		}
 		catch (RpcException) // Server down (different from frozen)
 		{
@@ -273,6 +277,8 @@ internal class Customer
 		try
 		{
 			var reply = server.ReadBalance(req);
+			Console.WriteLine("[READ] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+
 			return reply.Balance;
 		}
 		catch (RpcException) // Server down (different from frozen)
@@ -281,32 +287,4 @@ internal class Customer
 			return -1;
 		}
 	}
-
-	//public class ClientInterceptor : Interceptor
-	//{
-	//    // private readonly ILogger logger;
-
-	//    //public GlobalServerLoggerInterceptor(ILogger logger) {
-	//    //    this.logger = logger;
-	//    //}
-
-	//    public override TResponse BlockingUnaryCall<TRequest, TResponse>(TRequest request, ClientInterceptorContext<TRequest, TResponse> context, BlockingUnaryCallContinuation<TRequest, TResponse> continuation)
-	//    {
-
-	//        Metadata metadata = context.Options.Headers; // read original headers
-	//        metadata ??= new Metadata();
-	//        metadata.Add("dad", "dad-value"); // add the additional metadata
-
-	//        // create new context because original context is readonly
-	//        ClientInterceptorContext<TRequest, TResponse> modifiedContext =
-	//            new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host,
-	//                new CallOptions(metadata, context.Options.Deadline,
-	//                    context.Options.CancellationToken, context.Options.WriteOptions,
-	//                    context.Options.PropagationToken, context.Options.Credentials));
-	//        Console.Write("calling server...");
-	//        TResponse response = base.BlockingUnaryCall(request, modifiedContext, continuation);
-	//        return response;
-	//    }
-
-	//}
 }

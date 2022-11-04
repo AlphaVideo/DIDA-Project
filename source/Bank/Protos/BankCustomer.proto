@@ -8,6 +8,7 @@ message DepositRequest {
 }
 message DepositReply {
 	float balance = 1;
+	string server_type = 2;
 }
 
 
@@ -18,6 +19,7 @@ message WithdrawalRequest {
 }
 message WithdrawalReply {
 	float balance = 1;
+	string server_type = 2;
 }
 
 message ReadBalanceRequest {
@@ -26,6 +28,7 @@ message ReadBalanceRequest {
 }
 message ReadBalanceReply {
 	float balance = 1;
+	string server_type = 2;
 }
 
 
