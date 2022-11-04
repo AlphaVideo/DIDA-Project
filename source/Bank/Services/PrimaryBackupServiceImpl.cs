@@ -20,7 +20,7 @@ namespace Bank.Services
 		{
 
 			PrepareReply reply = new();
-			reply.Ack = _datacentre.canPrepare(request.SenderPort, request.SeqNumber);
+			reply.Ack = _datacentre.canPrepare(request.SenderPid, request.SeqNumber);
 
 			return Task.FromResult(reply);
 		}

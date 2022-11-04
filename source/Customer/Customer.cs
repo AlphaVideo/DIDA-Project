@@ -72,6 +72,7 @@ internal class Customer
 				{
 					Console.WriteLine("Reached end of script. Press any key to exit.");
 					Console.ReadKey();
+					break;
 				}
 
 				command = sr.ReadLine();

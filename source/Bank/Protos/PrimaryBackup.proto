@@ -16,7 +16,7 @@ message PrepareRequest {
 	int32 customer_id = 1;
 	int32 msg_id = 2;
 	int32 seq_number = 3;
-	int32 sender_port = 4;
+	int32 sender_pid = 4;
 }
 message PrepareReply {
 	bool ack = 1;

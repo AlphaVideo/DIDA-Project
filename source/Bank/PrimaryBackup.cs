@@ -172,7 +172,7 @@ namespace Bank
 			pReq.CustomerId = op.CustomerId;
 			pReq.MsgId = op.MessageId;
 			pReq.SeqNumber = generateSeqNumber();
-			pReq.SenderPort = _port;
+			pReq.SenderPid = _processId;
 
 
 			while (!broadcastPrepare(pReq))
@@ -306,10 +306,8 @@ namespace Bank
 		}
 
 		// check if prepare request is valid, else reply with NACK
-		internal bool canPrepare(int port, int seq)
+		internal bool canPrepare(int pid, int seq)
 		{
-			int pid = _config.getPidFromPort(port);
-
 			_slotLock.EnterReadLock();
 			int currentPrimary = _primaryHistory[_currentSlot];
 			_slotLock.ExitReadLock();
