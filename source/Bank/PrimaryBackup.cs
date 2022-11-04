@@ -1,5 +1,6 @@
 ﻿using BankServer.BankDomain;
 using Common;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
@@ -160,13 +161,13 @@ namespace Bank
 
 			if (_processId == currentPrimary)
 			{
-				Thread committer = new Thread(() => Do2PhaseCommit(op));
+				Thread committer = new Thread(() => do2PhaseCommit(op));
 				committer.Start();
 			}
 		}
 
 		// executes 2-Phase Commit protocol with other banks
-		internal void Do2PhaseCommit(Operation op)
+		internal void do2PhaseCommit(Operation op)
 		{
 			PrepareRequest pReq = new();
 			pReq.CustomerId = op.CustomerId;
@@ -252,8 +253,8 @@ namespace Bank
 			return true;
 		}
 
-		// sends prepare request to other banks
-		internal bool sendPrepare(PrimaryBackupService.PrimaryBackupServiceClient client, PrepareRequest req)
+        // sends prepare request to other banks
+        internal bool sendPrepare(PrimaryBackupService.PrimaryBackupServiceClient client, PrepareRequest req)
 		{
 			try
 			{
@@ -267,8 +268,23 @@ namespace Bank
 			}
 		}
 
-		// when operation receives sequence number it's moved to commited queue, and execution is started
-		internal void commitOperation(int customerId, int msgId, int seqNum)
+        // sends list pending request to other banks
+        internal Google.Protobuf.Collections.RepeatedField<ProtoOperation> sendListPending(PrimaryBackupService.PrimaryBackupServiceClient client, ListPendingRequest req)
+        {
+            try
+            {
+                var reply = client.ListPending(req);
+                return reply.OperationList;
+            }
+            catch (RpcException) // Server down (different from frozen)
+            {
+                Console.WriteLine("Server " + client.ToString() + " could not be reached.");
+                return null;
+            }
+        }
+
+        // when operation receives sequence number it's moved to commited queue, and execution is started
+        internal void commitOperation(int customerId, int msgId, int seqNum)
 		{
 			Operation? op = _uncommited.Find(el => el.CustomerId == customerId && el.MessageId == msgId);
 
@@ -327,7 +343,44 @@ namespace Bank
 			// - do this until majority
 			// - execute 2PC to each one of them
 			// - return, resuming new request processing
-		}
+
+			ListPendingRequest req = new();
+			req.LastSeqNum = generateSeqNumber()-1; //Convention: Last Commit Seq Number = Seq Number before first "hole"
+
+            List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> pendingRequests = new();
+            List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> completedRequests = new();
+
+            Console.WriteLine("[PrmBck] Broadcasting ListPending with LastCommitSeq={0}", req.LastSeqNum);
+
+            for (int i = 0; i < _banks.Length; i++)
+            {
+                PrimaryBackupService.PrimaryBackupServiceClient client = _banks[i];
+
+                pendingRequests.Add(Task.Run(() => sendListPending(client, req)));
+            }
+
+            // Wait for a majority of answers
+            while (pendingRequests.Count >= completedRequests.Count)
+            {
+                int completedIndex = Task.WaitAny(pendingRequests.ToArray());
+                completedRequests.Add(pendingRequests[completedIndex]);
+
+                pendingRequests.RemoveAt(completedIndex);
+            }
+
+            //For each reply, commit local uncommited ops found in proto-op lists
+			foreach (var protoOpList in completedRequests)
+			{
+				foreach (var protoOp in protoOpList.Result)
+				{
+					int customerId = protoOp.CustomerId;
+					int msgId = protoOp.MessageId;
+					Operation? op = _uncommited.Find(el => el.CustomerId == customerId && el.MessageId == msgId);
+
+					commitOperation(customerId, msgId, op.SeqNum);
+                }
+            }
+        }
 
 		// return pending operations and operations since lastSeqN
 		internal ListPendingReply getNewerThan(int lastSeqN)
