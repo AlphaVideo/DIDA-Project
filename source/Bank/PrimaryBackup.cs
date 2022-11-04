@@ -257,7 +257,7 @@ namespace Bank
 		{
 			try
 			{
-                var reply = client.Prepare(req);
+				var reply = client.Prepare(req);
 				return reply.Ack;
 			}
 			catch (RpcException) // Server down (different from frozen)
@@ -333,21 +333,14 @@ namespace Bank
 		internal ListPendingReply getNewerThan(int lastSeqN)
 		{
 			ListPendingReply reply = new();
-			SortedList<int, Operation> commitedToSend = new();  // this way we dont have to worry about inserting in correct order
 
-			// TODO:
-			// add stuff to toSend:
-			// get operations from executed
-			// get operations from commited
+			foreach (Operation op in _executed)
+				if (op.SeqNum > lastSeqN)
+					reply.OperationList.Add(op.toProto());
 
-			foreach (Operation op in commitedToSend.Values)
-			{
-				reply.OperationList.Add(op.toProto());
-			}
-			foreach (Operation op in _uncommited)
-			{
-				reply.OperationList.Add(op.toProto());
-			}
+			foreach (Operation op in _commited.Values)
+				if (op.SeqNum > lastSeqN)
+					reply.OperationList.Add(op.toProto());
 
 			return reply;
 		}
@@ -355,11 +348,11 @@ namespace Bank
 		//For client to know what kind of server is replying
 		internal bool isPrimaryServer()
 		{
-            _slotLock.EnterReadLock();
-            var res = _primaryHistory[_currentSlot] == _processId;
-            _slotLock.ExitReadLock();
+			_slotLock.EnterReadLock();
+			var res = _primaryHistory[_currentSlot] == _processId;
+			_slotLock.ExitReadLock();
 
 			return res;
-        }
+		}
 	}
 }
