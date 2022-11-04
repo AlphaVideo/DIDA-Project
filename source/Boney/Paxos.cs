@@ -1,6 +1,7 @@
 ﻿using Common;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Grpc.Net.Client;
 using Grpc.Net.Client.Balancer;
 using System;
 using System.Collections.Concurrent;
@@ -59,7 +60,7 @@ namespace Boney
 		private Dictionary<int, int> learned  = new();
 
 
-		public Paxos(int id, List<ServerInfo> paxos_servers, PerfectChannel perfectChannel, DateTime startupTime)
+		public Paxos(int id, List<string> paxos_servers_addresses, PerfectChannel perfectChannel, DateTime startupTime)
 		{
 			this.id = id;
 
@@ -68,10 +69,10 @@ namespace Boney
 			calculateLeaders();
 
 			// Prepare paxos client for acceptors
-			paxosClients = new PaxosService.PaxosServiceClient[paxos_servers.Count];
-			for (int i = 0; i < paxos_servers.Count; i++)
+			paxosClients = new PaxosService.PaxosServiceClient[paxos_servers_addresses.Count];
+			for (int i = 0; i < paxos_servers_addresses.Count; i++)
 			{
-				paxosClients[i] = new PaxosService.PaxosServiceClient(paxos_servers[i].Channel.Intercept(perfectChannel));
+				paxosClients[i] = new PaxosService.PaxosServiceClient(GrpcChannel.ForAddress(paxos_servers_addresses[i]).Intercept(perfectChannel)).WithHost(paxos_servers_addresses[i]);
 			}
 
 			// Start fail detector thread

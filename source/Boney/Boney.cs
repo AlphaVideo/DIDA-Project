@@ -26,11 +26,6 @@ internal class Program
 		Console.SetWindowSize(60, 20);
 		Console.WriteLine("BONEY process started with id " + processId);
 
-		List<ServerInfo> boneyServers = new();
-		foreach (string addr in config.getBoneyServerAddresses())
-		{
-			boneyServers.Add(new BoneyServerInfo(addr));
-		}
 		int serverPort = config.getPortFromPid(processId);
 
 
@@ -39,7 +34,7 @@ internal class Program
 		freezer.StartAt(startupTime);
 
 		Console.WriteLine("Boney server will begin handling requests at " + startupTime.ToString("HH:mm:ss"));
-		Paxos paxos = new Paxos(processId, boneyServers, perfectChannel, startupTime);
+		Paxos paxos = new Paxos(processId, config.getBoneyServerAddresses(), perfectChannel, startupTime);
 
 		const string ServerHostname = "localhost";
 		BoneyServiceImpl boneyService = new BoneyServiceImpl(paxos);

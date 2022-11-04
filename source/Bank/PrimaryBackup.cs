@@ -47,12 +47,12 @@ namespace Bank
 			int i = 0;
 			foreach (string addr in bankAddrs)
 			{
-				_banks[i++] = new PrimaryBackupService.PrimaryBackupServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel));
+				_banks[i++] = new PrimaryBackupService.PrimaryBackupServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel)).WithHost(addr);
 			}
 			i = 0;
 			foreach (string addr in boneyAddrs)
 			{
-				_boneys[i++] = new BoneyService.BoneyServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel));
+				_boneys[i++] = new BoneyService.BoneyServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel)).WithHost(addr);
 			}
 
 			Thread updater = new Thread(() => primaryUpdater(startupTime));
@@ -254,7 +254,7 @@ namespace Bank
 		{
 			try
 			{
-				var reply = client.Prepare(req);
+                var reply = client.Prepare(req);
 				return reply.Ack;
 			}
 			catch (RpcException) // Server down (different from frozen)

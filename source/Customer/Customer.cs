@@ -49,7 +49,7 @@ internal class Customer
 
 		foreach (string addr in config.getBankServerAddresses())
 		{
-			bankServers.Add(new BankService.BankServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel)));
+			bankServers.Add(new BankService.BankServiceClient(GrpcChannel.ForAddress(addr).Intercept(perfectChannel)).WithHost(addr));
 		}
 
 		Console.WriteLine("Customer will begin sending requests at " + startupTime.ToString("HH:mm:ss"));
