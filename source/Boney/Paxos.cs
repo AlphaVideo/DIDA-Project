@@ -273,11 +273,11 @@ namespace Boney
 		{
 			for (int timeslot = 1; timeslot <= maxSlots; timeslot++)
 			{
-				List<int> candidateLeaders = config.getBoneyIds();
+				List<int> candidateLeaders = new List<int>(config.getBoneyIds());
 
-				foreach (int sus in timeslots.getMySuspectList(timeslot, id))
+                foreach (int sus in timeslots.getMySuspectList(timeslot, id))
 					candidateLeaders.Remove(sus);
-
+				
 				is_leader.SetItem(timeslot, candidateLeaders.Min() == id);
 			}
 		}
