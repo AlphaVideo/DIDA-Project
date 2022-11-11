@@ -78,7 +78,15 @@ namespace Bank
 				_primaryHistory[slot] = getLeader(slot);
 
 				if (slot > 1 && _primaryHistory[slot] == _processId && _primaryHistory[slot - 1] != _processId)
+				{
 					doTakeOver();
+
+					foreach (Operation op in _uncommited)
+					{
+						Thread committer = new Thread(() => do2PhaseCommit(op));
+						committer.Start();
+					}
+				}
 				_slotLock.ExitWriteLock();
 
 				Thread.Sleep(slotDuration);
@@ -278,6 +286,13 @@ namespace Bank
 			}
 		}
 
+		internal void commitOperationLock(int customerId, int msgId, int seqNum)
+		{
+			_slotLock.EnterWriteLock();
+			commitOperation(customerId, msgId, seqNum);
+			_slotLock.ExitWriteLock();
+		}
+
 		// when operation receives sequence number it's moved to commited queue, and execution is started
 		internal void commitOperation(int customerId, int msgId, int seqNum)
 		{
@@ -293,7 +308,7 @@ namespace Bank
 			executeAllPossible();
 		}
 
-		// execute all possible operations in commited list (those who are contiguous with last)
+		// (protected) execute all possible operations in commited list (those who are contiguous with last)
 		internal void executeAllPossible()
 		{
 			if (_commited.Count == 0)
@@ -320,11 +335,18 @@ namespace Bank
 		internal bool canPrepare(int pid, int seq)
 		{
 			_slotLock.EnterReadLock();
-			int currentPrimary = _primaryHistory[_currentSlot];
+			bool isPrimary = pid == _primaryHistory[_currentSlot];
+			bool isAlreadyCommited = _commited.ContainsKey(seq);
+			bool isAlreadyExecuted = _lastExecuted >= seq;
 			_slotLock.ExitReadLock();
 
+			if (!isPrimary) Console.WriteLine("REFUSING: isnt primary (pid={0})", pid);
+			if (isAlreadyCommited) Console.WriteLine("REFUSING: already commited (seq={0})", seq);
+			if (isAlreadyExecuted) Console.WriteLine("REFUSING: already executed (seq={0})", seq);
+
+
 			// i) requester must be primary ii) seq must not be in commited list iii) seq must not have been executed
-			return pid == currentPrimary && !_commited.ContainsKey(seq) && _lastExecuted < seq;
+			return isPrimary && !isAlreadyCommited && !isAlreadyExecuted;
 		}
 
 		// (protected) get pending operations and commit them
@@ -334,7 +356,7 @@ namespace Bank
 			if (_commited.Count == 0)
 				req.LastSeqNum = _lastExecuted;
 			else
-				req.LastSeqNum = _commited[0].SeqNum;
+				req.LastSeqNum = _commited.Values[0].SeqNum;
 
 			List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> pendingRequests = new();
 			List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> completedRequests = new();
@@ -360,6 +382,7 @@ namespace Bank
 			//For each reply, commit local uncommited ops found in proto-op lists
 			foreach (var protoOpList in completedRequests)
 			{
+
 				foreach (var protoOp in protoOpList.Result)
 				{
 					int customerId = protoOp.CustomerId;
@@ -368,6 +391,7 @@ namespace Bank
 
 					if (op == null) continue;
 
+					Console.WriteLine(op);
 					commitOperation(customerId, msgId, op.SeqNum);
 				}
 			}
@@ -378,6 +402,7 @@ namespace Bank
 		{
 			ListPendingReply reply = new();
 
+			//_slotLock.EnterReadLock();
 			foreach (Operation op in _executed)
 				if (op.SeqNum > lastSeqN)
 					reply.OperationList.Add(op.toProto());
@@ -385,6 +410,8 @@ namespace Bank
 			foreach (Operation op in _commited.Values)
 				if (op.SeqNum > lastSeqN)
 					reply.OperationList.Add(op.toProto());
+
+			//_slotLock.ExitReadLock();
 
 			return reply;
 		}
@@ -397,6 +424,29 @@ namespace Bank
 			_slotLock.ExitReadLock();
 
 			return res;
+		}
+
+		internal void dumpAll(string comment)
+		{
+			Console.WriteLine("DUMPING {0}", comment);
+
+			Console.WriteLine("_uncommited");
+			foreach(Operation op in _uncommited)
+			{
+				Console.WriteLine(op);
+			}
+
+			Console.WriteLine("_commited");
+			foreach (Operation op in _commited.Values)
+			{
+				Console.WriteLine(op);
+			}
+
+			Console.WriteLine("_executed");
+			foreach (Operation op in _executed)
+			{
+				Console.WriteLine(op);
+			}
 		}
 	}
 }

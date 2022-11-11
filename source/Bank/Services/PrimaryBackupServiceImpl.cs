@@ -27,7 +27,8 @@ namespace Bank.Services
 
 		public override Task<EmptyReply> Commit(CommitRequest request, ServerCallContext context)
 		{
-			_datacentre.commitOperation(request.CustomerId, request.MsgId, request.SeqNumber);
+			Console.WriteLine("[PrmBck] Received commit(cust={0}, msgId={1}, seq={2})", request.CustomerId, request.MsgId, request.SeqNumber);
+			_datacentre.commitOperationLock(request.CustomerId, request.MsgId, request.SeqNumber);
 
 			return Task.FromResult(new EmptyReply());
 		}

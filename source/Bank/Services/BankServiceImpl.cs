@@ -43,6 +43,7 @@ namespace BankServer.Services
 			Operation op = new(Operation.OpCode.WITHDRAWAL, request.Amount, request.CustomerId, request.MsgId);
 			_datacentre.queueOperation(op);
 
+
 			Console.WriteLine("[Bank  ] Will wait result of withdrawal(amount={0})", request.Amount);
 			reply.Balance = op.waitForResult();
 			Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);

@@ -74,5 +74,10 @@ namespace Bank
             _executionTrigger.WaitOne();
             return _result;
         }
+
+        public override string ToString()
+        {
+            return String.Format("Op(cust={0}, msg={1}, seq={2}, amount={3})", _customerId, _messageId, _seqNum, _amount);
+        }
     }
 }
