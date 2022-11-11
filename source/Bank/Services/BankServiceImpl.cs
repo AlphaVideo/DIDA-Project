@@ -27,7 +27,7 @@ namespace BankServer.Services
 			Operation op = new(Operation.OpCode.DEPOSIT, request.Amount, request.CustomerId, request.MsgId);
 			_datacentre.queueOperation(op);
 
-			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			Console.WriteLine("[Bank  ] Will wait result of deposit(amount={0})", request.Amount);
 			reply.Balance = op.waitForResult();
             Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
             reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";
@@ -43,7 +43,7 @@ namespace BankServer.Services
 			Operation op = new(Operation.OpCode.WITHDRAWAL, request.Amount, request.CustomerId, request.MsgId);
 			_datacentre.queueOperation(op);
 
-			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			Console.WriteLine("[Bank  ] Will wait result of withdrawal(amount={0})", request.Amount);
 			reply.Balance = op.waitForResult();
 			Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
             reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";
@@ -59,7 +59,7 @@ namespace BankServer.Services
 			Operation op = new(Operation.OpCode.READ, 0, request.CustomerId, request.MsgId);
 			_datacentre.queueOperation(op);
 
-			Console.WriteLine("[Bank  ] Will now block awaiting result");
+			Console.WriteLine("[Bank  ] Will wait result of read()");
 			reply.Balance = op.waitForResult();
             Console.WriteLine("[Bank  ] Result 'Balance={0}' arrived, resuming", reply.Balance);
 			reply.ServerType = _datacentre.isPrimaryServer() ? "Primary" : "Secondary";

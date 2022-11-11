@@ -32,24 +32,24 @@ namespace Common
 			foreach (string line in lines)
 			{
 				string[] tokens = line.Split(" ");
-				if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "boney")
+				if (tokens.Length >= 4 && tokens[0] == "P" && tokens[2] == "boney")
 				{
 					boneyIds.Add(int.Parse(tokens[1]));
 					boneyServerAddrs.Add(tokens[3]);
 					servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
 				}
 
-				else if (tokens.Length == 4 && tokens[0] == "P" && tokens[2] == "bank")
+				else if (tokens.Length >= 4 && tokens[0] == "P" && tokens[2] == "bank")
 				{
 					bankIds.Add(int.Parse(tokens[1]));
 					bankServerAddrs.Add(tokens[3]);
 					servicePorts.Add(int.Parse(tokens[1]), int.Parse(tokens[3].Split(":")[2]));
 				}
 
-				if (tokens.Length == 2 && tokens[0] == "S")
+				if (tokens.Length >= 2 && tokens[0] == "S")
 					slotCount = int.Parse(tokens[1]);
 
-				if (tokens.Length == 2 && tokens[0] == "D")
+				if (tokens.Length >= 2 && tokens[0] == "D")
 				{
 					slotDuration = int.Parse(tokens[1]);
 					timeslots = new Timeslots(slotDuration, slotCount); //Duration always comes before allocations, so timeslots can be initialized here

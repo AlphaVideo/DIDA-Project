@@ -29,9 +29,9 @@ internal class Customer
 
 		Console.SetWindowSize(60, 20);
 
-		if (argv.Length != 3)
+		if (argv.Length != 4)
 		{
-			Console.WriteLine("Error: unexpected number of arguments, expected 3, got " + argv.Length + " instead.");
+			Console.WriteLine("Error: unexpected number of arguments, expected 4, got " + argv.Length + " instead.");
 			Console.ReadKey();
 			System.Environment.Exit(1);
 		}
@@ -43,7 +43,7 @@ internal class Customer
 		PerfectChannel perfectChannel = new(config.getTimeslots().getSlotDuration());
 
 		string base_path = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), @"..\..\..\..\"));
-		string script_path = Path.Combine(base_path, @"Customer\customer_script.txt");
+		string script_path = Path.Combine(base_path, @"Customer\" + argv[3]);
 		StreamReader sr = new StreamReader(script_path);
 
 		Console.WriteLine("CUSTOMER process started with id " + customerId);
@@ -198,7 +198,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Deposit(req);
-            Console.WriteLine("[DEPOSIT] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+            Console.WriteLine("[DEPOSIT] Reply received " + reply.ServerType + " server: Balance={0}", reply.Balance);
 
             return reply.Balance;
 		}
@@ -236,7 +236,7 @@ internal class Customer
 		try
 		{
 			var reply = server.Withdrawal(req);
-            Console.WriteLine("[WITHDRAWAL] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+            Console.WriteLine("[WITHDRAWAL] Reply received " + reply.ServerType + " server: Balance={0}", reply.Balance);
 
             return reply.Balance;
 		}
@@ -273,7 +273,7 @@ internal class Customer
 		try
 		{
 			var reply = server.ReadBalance(req);
-			Console.WriteLine("[READ] Reply received from " + reply.ServerType + " server: Balance={0}", reply.Balance);
+			Console.WriteLine("[READ] Reply received " + reply.ServerType + " server: Balance={0}", reply.Balance);
 
 			return reply.Balance;
 		}

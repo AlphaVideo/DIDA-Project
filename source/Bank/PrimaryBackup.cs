@@ -153,11 +153,11 @@ namespace Bank
 		// inserts operation in uncommited queue and, if primary, start 2-Phase Commit
 		internal void queueOperation(Operation op)
 		{
+			_slotLock.EnterWriteLock();
 			_uncommited.Add(op);
-
-			_slotLock.EnterReadLock();
+			op.SeqNum = _lastExecuted + _commited.Count + _uncommited.Count;
 			int currentPrimary = _primaryHistory[_currentSlot];
-			_slotLock.ExitReadLock();
+			_slotLock.ExitWriteLock();
 
 			if (_processId == currentPrimary)
 			{
@@ -172,7 +172,7 @@ namespace Bank
 			PrepareRequest pReq = new();
 			pReq.CustomerId = op.CustomerId;
 			pReq.MsgId = op.MessageId;
-			pReq.SeqNumber = generateSeqNumber();
+			pReq.SeqNumber = op.SeqNum;
 			pReq.SenderPid = _processId;
 
 
@@ -183,12 +183,6 @@ namespace Bank
 				_slotLock.ExitReadLock();
 
 				if (_processId != currentPrimary) return;
-
-				int newSeqNum = generateSeqNumber(); // just to see if something has changed
-
-				if (newSeqNum == pReq.SeqNumber) return;
-
-				pReq.SeqNumber = newSeqNum;
 			}
 
 
@@ -197,7 +191,7 @@ namespace Bank
 			cReq.MsgId = op.MessageId;
 			cReq.SeqNumber = pReq.SeqNumber;
 
-			Console.WriteLine("[PrmBck] Broadcasting commit(custmrId={0}, msgId={1}, seq={2})", cReq.CustomerId, cReq.CustomerId, cReq.SeqNumber);
+			Console.WriteLine("[PrmBck] Broadcasting commit(custmrId={0}, msgId={1}, seq={2})", cReq.CustomerId, cReq.MsgId, cReq.SeqNumber);
 			foreach (PrimaryBackupService.PrimaryBackupServiceClient client in _banks)
 			{
 				Thread thread = new Thread(() => client.Commit(cReq));
@@ -207,19 +201,20 @@ namespace Bank
 		}
 
 		// calculate new sequence number to try and atribute to new operation
-		internal int generateSeqNumber()
-		{
-			int last = _lastExecuted;
-			foreach (int key in _commited.Keys)
-			{
-				if (key != last + 1)
-				{
-					return last + 1;
-				}
-				last = key;
-			}
-			return last + 1;
-		}
+		//internal int generateSeqNumber()
+		//{
+			//int last = _lastExecuted;
+			//foreach (int key in _commited.Keys)
+			//{
+			//	if (key != last + 1)
+			//	{
+			//		return last + 1;
+			//	}
+			//	last = key;
+			//}
+			//return last + 1;
+		//	return 
+		//}
 
 		// broadcast prepare statement, wait for a majority of replies, if one of them NACK, abort
 		internal bool broadcastPrepare(PrepareRequest req)
@@ -227,7 +222,7 @@ namespace Bank
 			List<Task<bool>> pendingRequests = new();
 			List<Task<bool>> completedRequests = new();
 
-			Console.WriteLine("[PrmBck] Broadcasting prepare(custmrId={0}, msgId={1}, seq={2})", req.CustomerId, req.CustomerId, req.SeqNumber);
+			Console.WriteLine("[PrmBck] Broadcasting prepare(custmrId={0}, msgId={1}, seq={2})", req.CustomerId, req.MsgId, req.SeqNumber);
 
 			for (int i = 0; i < _banks.Length; i++)
 			{
@@ -336,7 +331,10 @@ namespace Bank
 		internal void doTakeOver()
 		{
 			ListPendingRequest req = new();
-			req.LastSeqNum = generateSeqNumber()-1; //Convention: Last Commit Seq Number = Seq Number before first "hole"
+			if (_commited.Count == 0)
+				req.LastSeqNum = _lastExecuted;
+			else
+				req.LastSeqNum = _commited[0].SeqNum;
 
 			List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> pendingRequests = new();
 			List<Task<Google.Protobuf.Collections.RepeatedField<ProtoOperation>>> completedRequests = new();
@@ -367,6 +365,8 @@ namespace Bank
 					int customerId = protoOp.CustomerId;
 					int msgId = protoOp.MessageId;
 					Operation? op = _uncommited.Find(el => el.CustomerId == customerId && el.MessageId == msgId);
+
+					if (op == null) continue;
 
 					commitOperation(customerId, msgId, op.SeqNum);
 				}
